@@ -4,6 +4,7 @@ import yaml
 import time
 import torch
 import torch.nn as nn
+import wandb
 from torch.utils.data import DataLoader
 from data.dataset import SRDataset
 from utils.metrics import psnr_y
@@ -162,6 +163,9 @@ def main():
     # 学习率调度器
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='max', factor=0.5, patience=10, min_lr=1e-6)
 
+    # 初始化 wandb
+    wandb.init(project="SISR", config=vars(args), name=f"{args.model}_x{args.scale}")
+
     # 创建保存目录
     os.makedirs(args.save_dir, exist_ok=True)
     log_path = os.path.join(args.save_dir, f"{args.model}_x{args.scale}.log")
@@ -233,6 +237,16 @@ def main():
             dt = time.time() - t0
             log_line(fp, f"[Epoch {epoch:03d}] train_loss={train_loss:.4f} | train_psnr={train_psnr:.2f} dB | val_loss={val_loss:.4f} | val_psnr={val_psnr:.2f} dB | time={dt:.1f}s")
             
+            # 使用 wandb 记录日志
+            wandb.log({
+                "epoch": epoch,
+                "train_loss": train_loss,
+                "train_psnr": train_psnr,
+                "val_loss": val_loss,
+                "val_psnr": val_psnr,
+                "lr": opt.param_groups[0]['lr'] if type(opt) != dict else list(opt.values())[0].param_groups[0]['lr']
+            })
+
             # 保存最佳模型
             if val_psnr > best:
                 best = val_psnr
@@ -242,6 +256,7 @@ def main():
         log_line(fp, f"\nBest PSNR: {best:.2f} dB")
         plot_metrics(args, train_loss_history, train_psnr_history, val_loss_history, val_psnr_history, args.save_dir)
         log_line(fp, f"Training complete. Metrics plot saved to {args.save_dir}/metrics.png")
+        wandb.finish()
 
 
 if __name__ == '__main__':
