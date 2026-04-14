@@ -5,15 +5,31 @@ from torch.utils.data import Dataset
 from utils.img import imresize_bicubic, rgb2y
 import torchvision.transforms as T
 
+
 class SRDataset(Dataset):
     def __init__(self, model, hr_dir, scale=2, patch_size=96, augment=True, is_train=True):
-        self.hr_paths = sorted(
+        candidates = sorted(
             [
                 os.path.join(hr_dir, p)
                 for p in os.listdir(hr_dir)
                 if p.lower().endswith(('.png', 'jpg', 'jpeg', 'bmp'))
             ]
         )
+        # 过滤损坏图片，避免 DataLoader 在 worker 进程中报错中断训练。
+        self.hr_paths = []
+        bad_files = []
+        for path in candidates:
+            try:
+                with Image.open(path) as img:
+                    img.verify()
+                self.hr_paths.append(path)
+            except Exception:
+                bad_files.append(path)
+
+        if bad_files:
+            print(f"[SRDataset] Skip {len(bad_files)} unreadable files from {hr_dir}.")
+            print(f"[SRDataset] Example bad file: {bad_files[0]}")
+
         self.model = model
         self.scale = scale
         self.patch_size = patch_size

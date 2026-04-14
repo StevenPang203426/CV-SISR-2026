@@ -1,0 +1,87 @@
+====================
+Model: SRCNN
+Scale: x2
+Epochs: 500
+Batch Size: 16
+Patch Size: 96
+LR: 1e-4
+Optimizer: Adam
+Criterion: MSE
+====================
+[Epoch 001] train_loss=0.0553 | train_psnr=21.03 dB | val_loss=0.0078 | val_psnr=24.03 dB | time=56.1s
+[Epoch 002] train_loss=0.0082 | train_psnr=26.90 dB | val_loss=0.0043 | val_psnr=26.21 dB | time=55.2s
+[Epoch 003] train_loss=0.0050 | train_psnr=28.10 dB | val_loss=0.0032 | val_psnr=27.19 dB | time=56.4s
+[Epoch 004] train_loss=0.0039 | train_psnr=29.30 dB | val_loss=0.0025 | val_psnr=28.01 dB | time=55.5s
+[Epoch 005] train_loss=0.0032 | train_psnr=30.54 dB | val_loss=0.0023 | val_psnr=28.49 dB | time=57.0s
+[Epoch 006] train_loss=0.0028 | train_psnr=31.11 dB | val_loss=0.0021 | val_psnr=28.98 dB | time=57.2s
+[Epoch 007] train_loss=0.0025 | train_psnr=31.88 dB | val_loss=0.0019 | val_psnr=29.42 dB | time=56.9s
+[Epoch 008] train_loss=0.0023 | train_psnr=32.27 dB | val_loss=0.0018 | val_psnr=29.73 dB | time=57.9s
+[Epoch 009] train_loss=0.0022 | train_psnr=32.40 dB | val_loss=0.0017 | val_psnr=30.01 dB | time=57.2s
+[Epoch 010] train_loss=0.0021 | train_psnr=32.80 dB | val_loss=0.0016 | val_psnr=30.22 dB | time=57.2s
+[Epoch 011] train_loss=0.0019 | train_psnr=33.06 dB | val_loss=0.0016 | val_psnr=30.40 dB | time=56.8s
+[Epoch 012] train_loss=0.0019 | train_psnr=33.17 dB | val_loss=0.0016 | val_psnr=30.49 dB | time=56.6s
+[Epoch 013] train_loss=0.0018 | train_psnr=33.45 dB | val_loss=0.0015 | val_psnr=30.70 dB | time=58.4s
+[Epoch 014] train_loss=0.0018 | train_psnr=33.48 dB | val_loss=0.0015 | val_psnr=30.78 dB | time=55.9s
+[Epoch 015] train_loss=0.0018 | train_psnr=33.70 dB | val_loss=0.0014 | val_psnr=30.93 dB | time=57.9s
+[Epoch 016] train_loss=0.0017 | train_psnr=33.75 dB | val_loss=0.0014 | val_psnr=30.87 dB | time=56.3s
+[Epoch 017] train_loss=0.0016 | train_psnr=34.27 dB | val_loss=0.0014 | val_psnr=31.14 dB | time=56.9s
+[Epoch 018] train_loss=0.0016 | train_psnr=34.49 dB | val_loss=0.0013 | val_psnr=31.23 dB | time=54.9s
+[Epoch 019] train_loss=0.0016 | train_psnr=34.54 dB | val_loss=0.0013 | val_psnr=31.30 dB | time=55.9s
+[Epoch 020] train_loss=0.0016 | train_psnr=34.51 dB | val_loss=0.0013 | val_psnr=31.41 dB | time=57.5s
+[Epoch 021] train_loss=0.0015 | train_psnr=35.03 dB | val_loss=0.0013 | val_psnr=31.47 dB | time=55.0s
+[Epoch 022] train_loss=0.0015 | train_psnr=34.75 dB | val_loss=0.0013 | val_psnr=31.53 dB | time=55.9s
+[Epoch 023] train_loss=0.0014 | train_psnr=35.10 dB | val_loss=0.0012 | val_psnr=31.58 dB | time=54.7s
+[Epoch 024] train_loss=0.0014 | train_psnr=35.20 dB | val_loss=0.0012 | val_psnr=31.65 dB | time=56.4s
+[Epoch 025] train_loss=0.0014 | train_psnr=34.96 dB | val_loss=0.0012 | val_psnr=31.68 dB | time=57.8s
+[Epoch 026] train_loss=0.0015 | train_psnr=35.18 dB | val_loss=0.0012 | val_psnr=31.75 dB | time=56.0s
+[Epoch 027] train_loss=0.0014 | train_psnr=35.12 dB | val_loss=0.0012 | val_psnr=31.80 dB | time=56.7s
+[Epoch 028] train_loss=0.0013 | train_psnr=35.39 dB | val_loss=0.0012 | val_psnr=31.79 dB | time=56.5s
+[Epoch 029] train_loss=0.0014 | train_psnr=35.49 dB | val_loss=0.0012 | val_psnr=31.88 dB | time=56.1s
+[Epoch 030] train_loss=0.0014 | train_psnr=35.28 dB | val_loss=0.0012 | val_psnr=31.90 dB | time=57.1s
+[Epoch 031] train_loss=0.0013 | train_psnr=35.36 dB | val_loss=0.0012 | val_psnr=31.96 dB | time=56.6s
+[Epoch 032] train_loss=0.0013 | train_psnr=35.60 dB | val_loss=0.0011 | val_psnr=31.99 dB | time=56.7s
+[Epoch 033] train_loss=0.0013 | train_psnr=35.61 dB | val_loss=0.0011 | val_psnr=32.02 dB | time=53.5s
+[Epoch 034] train_loss=0.0013 | train_psnr=35.32 dB | val_loss=0.0011 | val_psnr=32.05 dB | time=55.7s
+[Epoch 035] train_loss=0.0013 | train_psnr=35.60 dB | val_loss=0.0011 | val_psnr=32.05 dB | time=56.7s
+[Epoch 036] train_loss=0.0013 | train_psnr=35.65 dB | val_loss=0.0011 | val_psnr=32.07 dB | time=55.5s
+[Epoch 037] train_loss=0.0013 | train_psnr=35.64 dB | val_loss=0.0011 | val_psnr=32.13 dB | time=56.8s
+[Epoch 038] train_loss=0.0012 | train_psnr=35.88 dB | val_loss=0.0011 | val_psnr=32.16 dB | time=55.6s
+[Epoch 039] train_loss=0.0012 | train_psnr=35.81 dB | val_loss=0.0011 | val_psnr=32.15 dB | time=55.9s
+[Epoch 040] train_loss=0.0013 | train_psnr=35.52 dB | val_loss=0.0011 | val_psnr=32.20 dB | time=55.7s
+[Epoch 041] train_loss=0.0012 | train_psnr=35.90 dB | val_loss=0.0011 | val_psnr=32.20 dB | time=56.4s
+[Epoch 042] train_loss=0.0012 | train_psnr=35.87 dB | val_loss=0.0011 | val_psnr=32.25 dB | time=56.2s
+[Epoch 043] train_loss=0.0012 | train_psnr=35.61 dB | val_loss=0.0011 | val_psnr=32.26 dB | time=55.7s
+[Epoch 044] train_loss=0.0012 | train_psnr=35.95 dB | val_loss=0.0011 | val_psnr=32.27 dB | time=57.4s
+[Epoch 045] train_loss=0.0012 | train_psnr=35.82 dB | val_loss=0.0011 | val_psnr=32.30 dB | time=55.6s
+[Epoch 046] train_loss=0.0012 | train_psnr=35.66 dB | val_loss=0.0011 | val_psnr=32.24 dB | time=56.5s
+[Epoch 047] train_loss=0.0013 | train_psnr=35.73 dB | val_loss=0.0011 | val_psnr=32.32 dB | time=56.7s
+[Epoch 048] train_loss=0.0012 | train_psnr=36.04 dB | val_loss=0.0011 | val_psnr=32.34 dB | time=56.8s
+[Epoch 049] train_loss=0.0012 | train_psnr=36.05 dB | val_loss=0.0011 | val_psnr=32.35 dB | time=56.4s
+[Epoch 050] train_loss=0.0012 | train_psnr=35.90 dB | val_loss=0.0011 | val_psnr=32.29 dB | time=55.9s
+[Epoch 051] train_loss=0.0012 | train_psnr=35.52 dB | val_loss=0.0011 | val_psnr=32.37 dB | time=55.3s
+[Epoch 052] train_loss=0.0012 | train_psnr=36.02 dB | val_loss=0.0010 | val_psnr=32.38 dB | time=56.1s
+[Epoch 053] train_loss=0.0012 | train_psnr=35.91 dB | val_loss=0.0010 | val_psnr=32.38 dB | time=55.7s
+[Epoch 054] train_loss=0.0012 | train_psnr=36.08 dB | val_loss=0.0010 | val_psnr=32.40 dB | time=57.0s
+[Epoch 055] train_loss=0.0011 | train_psnr=36.02 dB | val_loss=0.0011 | val_psnr=32.39 dB | time=56.2s
+[Epoch 056] train_loss=0.0012 | train_psnr=36.13 dB | val_loss=0.0010 | val_psnr=32.42 dB | time=55.9s
+[Epoch 057] train_loss=0.0012 | train_psnr=36.05 dB | val_loss=0.0010 | val_psnr=32.42 dB | time=55.3s
+[Epoch 058] train_loss=0.0012 | train_psnr=36.23 dB | val_loss=0.0010 | val_psnr=32.40 dB | time=56.4s
+[Epoch 059] train_loss=0.0011 | train_psnr=35.86 dB | val_loss=0.0010 | val_psnr=32.40 dB | time=56.5s
+[Epoch 060] train_loss=0.0011 | train_psnr=36.23 dB | val_loss=0.0010 | val_psnr=32.43 dB | time=56.4s
+[Epoch 061] train_loss=0.0012 | train_psnr=36.02 dB | val_loss=0.0010 | val_psnr=32.46 dB | time=57.1s
+[Epoch 062] train_loss=0.0011 | train_psnr=36.18 dB | val_loss=0.0010 | val_psnr=32.47 dB | time=56.5s
+[Epoch 063] train_loss=0.0011 | train_psnr=36.09 dB | val_loss=0.0010 | val_psnr=32.42 dB | time=55.3s
+[Epoch 064] train_loss=0.0011 | train_psnr=36.24 dB | val_loss=0.0010 | val_psnr=32.48 dB | time=56.7s
+[Epoch 065] train_loss=0.0011 | train_psnr=36.16 dB | val_loss=0.0010 | val_psnr=32.48 dB | time=53.2s
+[Epoch 066] train_loss=0.0011 | train_psnr=36.01 dB | val_loss=0.0010 | val_psnr=32.42 dB | time=56.0s
+[Epoch 067] train_loss=0.0011 | train_psnr=36.19 dB | val_loss=0.0010 | val_psnr=32.51 dB | time=56.7s
+[Epoch 068] train_loss=0.0011 | train_psnr=36.14 dB | val_loss=0.0010 | val_psnr=32.51 dB | time=56.1s
+[Epoch 069] train_loss=0.0011 | train_psnr=36.31 dB | val_loss=0.0010 | val_psnr=32.51 dB | time=55.6s
+[Epoch 070] train_loss=0.0012 | train_psnr=36.01 dB | val_loss=0.0010 | val_psnr=32.50 dB | time=56.7s
+[Epoch 071] train_loss=0.0011 | train_psnr=36.30 dB | val_loss=0.0010 | val_psnr=32.52 dB | time=56.1s
+[Epoch 072] train_loss=0.0012 | train_psnr=36.49 dB | val_loss=0.0010 | val_psnr=32.53 dB | time=55.1s
+[Epoch 073] train_loss=0.0012 | train_psnr=36.22 dB | val_loss=0.0010 | val_psnr=32.52 dB | time=56.2s
+[Epoch 074] train_loss=0.0011 | train_psnr=36.03 dB | val_loss=0.0010 | val_psnr=32.55 dB | time=55.1s
+[Epoch 075] train_loss=0.0011 | train_psnr=36.13 dB | val_loss=0.0010 | val_psnr=32.52 dB | time=56.6s
+[Epoch 076] train_loss=0.0011 | train_psnr=36.48 dB | val_loss=0.0010 | val_psnr=32.34 dB | time=55.0s
+[Epoch 077] train_loss=0.0011 | train_psnr=35.76 dB | val_loss=0.0010 | val_psnr=32.56 dB | time=55.5s

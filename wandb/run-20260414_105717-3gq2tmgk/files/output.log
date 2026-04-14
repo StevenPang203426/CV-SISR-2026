@@ -1,0 +1,42 @@
+====================
+Model: SRCNN
+Scale: x3
+Epochs: 500
+Batch Size: 16
+Patch Size: 96
+LR: 1e-4
+Optimizer: Adam
+Criterion: MSE
+Wandb Project: SRCNN_X3
+====================
+[Epoch 001] train_loss=0.0623 | train_psnr=20.58 dB | val_loss=0.0091 | val_psnr=23.39 dB | time=54.9s
+[Epoch 002] train_loss=0.0096 | train_psnr=26.85 dB | val_loss=0.0052 | val_psnr=25.41 dB | time=54.1s
+[Epoch 003] train_loss=0.0062 | train_psnr=28.19 dB | val_loss=0.0037 | val_psnr=26.48 dB | time=54.3s
+[Epoch 004] train_loss=0.0044 | train_psnr=29.05 dB | val_loss=0.0030 | val_psnr=27.30 dB | time=53.9s
+[Epoch 005] train_loss=0.0036 | train_psnr=30.00 dB | val_loss=0.0028 | val_psnr=27.59 dB | time=54.8s
+[Epoch 006] train_loss=0.0032 | train_psnr=30.97 dB | val_loss=0.0027 | val_psnr=27.83 dB | time=53.9s
+[Epoch 007] train_loss=0.0031 | train_psnr=31.07 dB | val_loss=0.0026 | val_psnr=28.01 dB | time=55.2s
+[Epoch 008] train_loss=0.0029 | train_psnr=31.52 dB | val_loss=0.0025 | val_psnr=28.15 dB | time=54.9s
+Traceback (most recent call last):
+  File "/root/steven/AI/SISR/train.py", line 268, in <module>
+    main()
+    ~~~~^^
+  File "/root/steven/AI/SISR/train.py", line 205, in main
+    for b in train_loader:
+             ^^^^^^^^^^^^
+  File "/root/steven/AI/SISR/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py", line 741, in __next__
+    data = self._next_data()
+  File "/root/steven/AI/SISR/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py", line 1524, in _next_data
+    idx, data = self._get_data()
+                ~~~~~~~~~~~~~~^^
+  File "/root/steven/AI/SISR/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py", line 1473, in _get_data
+    success, data = self._try_get_data()
+                    ~~~~~~~~~~~~~~~~~~^^
+  File "/root/steven/AI/SISR/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py", line 1310, in _try_get_data
+    data = self._data_queue.get(timeout=timeout)
+  File "/root/.local/share/uv/python/cpython-3.13.13-linux-x86_64-gnu/lib/python3.13/queue.py", line 210, in get
+    self.not_empty.wait(remaining)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/root/.local/share/uv/python/cpython-3.13.13-linux-x86_64-gnu/lib/python3.13/threading.py", line 363, in wait
+    gotit = waiter.acquire(True, timeout)
+KeyboardInterrupt

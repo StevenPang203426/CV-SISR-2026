@@ -1,0 +1,24 @@
+2026-04-14 00:03:05,382 INFO    MainThread:163340 [wandb_setup.py:_flush():81] Current SDK version is 0.25.1
+2026-04-14 00:03:05,382 INFO    MainThread:163340 [wandb_setup.py:_flush():81] Configure stats pid to 163340
+2026-04-14 00:03:05,382 INFO    MainThread:163340 [wandb_setup.py:_flush():81] Loading settings from environment variables
+2026-04-14 00:03:05,382 INFO    MainThread:163340 [wandb_init.py:setup_run_log_directory():717] Logging user logs to /root/steven/AI/SISR/wandb/run-20260414_000305-n1ots9vn/logs/debug.log
+2026-04-14 00:03:05,382 INFO    MainThread:163340 [wandb_init.py:setup_run_log_directory():718] Logging internal logs to /root/steven/AI/SISR/wandb/run-20260414_000305-n1ots9vn/logs/debug-internal.log
+2026-04-14 00:03:05,383 INFO    MainThread:163340 [wandb_init.py:init():844] calling init triggers
+2026-04-14 00:03:05,383 INFO    MainThread:163340 [wandb_init.py:init():849] wandb.init called with sweep_config: {}
+config: {'config': 'configs/edsr_x2.yaml', 'model': 'edsr', 'scale': 2, 'train_dir': 'data/DIV2K/DIV2K_train_HR', 'val_dir': 'data/DIV2K/DIV2K_valid_HR', 'project_name': 'EDSR_X2', 'epochs': 500, 'batch_size': 16, 'patch_size': 96, 'lr': '1e-4', 'opt': 'Adam', 'crit': 'MSE', 'save_dir': 'output/edsr_x2', '_wandb': {}}
+2026-04-14 00:03:05,383 INFO    MainThread:163340 [wandb_init.py:init():892] starting backend
+2026-04-14 00:03:05,600 INFO    MainThread:163340 [wandb_init.py:init():895] sending inform_init request
+2026-04-14 00:03:05,604 INFO    MainThread:163340 [wandb_init.py:init():903] backend started and connected
+2026-04-14 00:03:05,605 INFO    MainThread:163340 [wandb_init.py:init():973] updated telemetry
+2026-04-14 00:03:05,608 INFO    MainThread:163340 [wandb_init.py:init():997] communicating run to backend with 90.0 second timeout
+2026-04-14 00:03:07,583 INFO    MainThread:163340 [wandb_init.py:init():1042] starting run threads in backend
+2026-04-14 00:03:07,662 INFO    MainThread:163340 [wandb_run.py:_console_start():2524] atexit reg
+2026-04-14 00:03:07,662 INFO    MainThread:163340 [wandb_run.py:_redirect():2373] redirect: wrap_raw
+2026-04-14 00:03:07,662 INFO    MainThread:163340 [wandb_run.py:_redirect():2442] Wrapping output streams.
+2026-04-14 00:03:07,662 INFO    MainThread:163340 [wandb_run.py:_redirect():2465] Redirects installed.
+2026-04-14 00:03:07,665 INFO    MainThread:163340 [wandb_init.py:init():1082] run started, returning control to user process
+2026-04-14 08:23:26,908 INFO    MainThread:163340 [wandb_run.py:_finish():2291] finishing run stevenpang203426-fudan-university-school-of-management/EDSR_X2/n1ots9vn
+2026-04-14 08:23:26,908 INFO    MainThread:163340 [wandb_run.py:_atexit_cleanup():2490] got exitcode: 0
+2026-04-14 08:23:26,908 INFO    MainThread:163340 [wandb_run.py:_restore():2472] restore
+2026-04-14 08:23:26,909 INFO    MainThread:163340 [wandb_run.py:_restore():2478] restore done
+2026-04-14 08:23:30,079 INFO    MainThread:163340 [wandb_run.py:_footer_sync_info():3868] logging synced files

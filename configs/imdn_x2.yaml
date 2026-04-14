@@ -1,8 +1,9 @@
 model: imdn
 scale: 2
 train:
-  train_dir: data/T91
-  val_dir: data/Set5
+  train_dir: data/DIV2K/DIV2K_train_HR
+  val_dir: data/DIV2K/DIV2K_valid_HR
+  project_name: IMDN_X2
   epochs: 500
   batch_size: 16
   patch_size: 96

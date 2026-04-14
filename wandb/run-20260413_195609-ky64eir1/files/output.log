@@ -1,0 +1,40 @@
+====================
+Model: SRCNN
+Scale: x2
+Epochs: 500
+Batch Size: 16
+Patch Size: 96
+LR: 1e-4
+Optimizer: Adam
+Criterion: MSE
+====================
+Traceback (most recent call last):
+  File "/root/steven/AI/SISR/train.py", line 267, in <module>
+    main()
+    ~~~~^^
+  File "/root/steven/AI/SISR/train.py", line 204, in main
+    for b in train_loader:
+             ^^^^^^^^^^^^
+  File "/root/steven/AI/SISR/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py", line 741, in __next__
+    data = self._next_data()
+  File "/root/steven/AI/SISR/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py", line 1518, in _next_data
+    return self._process_data(data, worker_id)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/root/steven/AI/SISR/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py", line 1586, in _process_data
+    data.reraise()
+    ~~~~~~~~~~~~^^
+  File "/root/steven/AI/SISR/.venv/lib/python3.13/site-packages/torch/_utils.py", line 785, in reraise
+    raise exception
+PIL.UnidentifiedImageError: Caught UnidentifiedImageError in DataLoader worker process 1.
+Original Traceback (most recent call last):
+  File "/root/steven/AI/SISR/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/worker.py", line 358, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/root/steven/AI/SISR/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/fetch.py", line 54, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+            ~~~~~~~~~~~~^^^^^
+  File "/root/steven/AI/SISR/data/dataset.py", line 34, in __getitem__
+    hr = Image.open(self.hr_paths[img_idx]).convert('RGB')
+         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/steven/AI/SISR/.venv/lib/python3.13/site-packages/PIL/Image.py", line 3711, in open
+    raise UnidentifiedImageError(msg)
+PIL.UnidentifiedImageError: cannot identify image file 'data/DIV2K/DIV2K_train_HR/0001.png'

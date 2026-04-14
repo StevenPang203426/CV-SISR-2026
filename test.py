@@ -61,6 +61,7 @@ def main():
         n += 1
         to_uint8 = lambda x: (x.clamp(0, 1).cpu().permute(1, 2, 0).numpy() * 255.0).round().astype('uint8')
         sr_img, hr_img = Image.fromarray(to_uint8(sr[0])), Image.fromarray(to_uint8(hr[0]))
+        lr_img = Image.fromarray(to_uint8(lr[0]))
         psnr = psnr_y(sr_img, hr_img, shave=args.scale)
         psnrs.append(psnr)
         ssim = ssim_y(sr_img, hr_img, shave=args.scale)
@@ -72,6 +73,7 @@ def main():
         })
         if args.save_images:
             sr_img.save(os.path.join(args.out_dir, f'{i:02d}_SR.png'))
+            lr_img.save(os.path.join(args.out_dir, f'{i:02d}_LR.png'))
 
     summary = {
         "model": args.model,

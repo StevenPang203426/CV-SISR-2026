@@ -1,0 +1,82 @@
+_wandb:
+    value:
+        cli_version: 0.25.1
+        e:
+            60f4o0xbpx3kv5lu3yrwilppr8pk3jjn:
+                args:
+                    - --config
+                    - configs/edsr_x2.yaml
+                codePath: train.py
+                codePathLocal: train.py
+                cpu_count: 104
+                cpu_count_logical: 208
+                cudaVersion: "13.0"
+                disk:
+                    /:
+                        total: "32212254720"
+                        used: "16619094016"
+                email: Stevenpang203426@outlook.com
+                executable: /root/steven/AI/SISR/.venv/bin/python
+                git:
+                    commit: 3e121df5e1a348592084b680215f7122747a8bed
+                    remote: https://github.com/StevenPang203426/SISR-Team8.git
+                gpu: NVIDIA vGPU-32GB
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ada
+                      cudaCores: 10240
+                      memoryTotal: "34351349760"
+                      name: NVIDIA vGPU-32GB
+                      uuid: GPU-dc9aa154-e8d5-e981-98c2-fc1eed209d2e
+                host: autodl-container-647545b24a-b087b23c
+                memory:
+                    total: "1081792684032"
+                os: Linux-5.15.0-78-generic-x86_64-with-glibc2.35
+                program: /root/steven/AI/SISR/train.py
+                python: CPython 3.13.13
+                root: /root/steven/AI/SISR
+                startedAt: "2026-04-13T16:03:05.380886Z"
+                writerId: 60f4o0xbpx3kv5lu3yrwilppr8pk3jjn
+        m: []
+        python_version: 3.13.13
+        t:
+            "1":
+                - 1
+                - 41
+            "2":
+                - 1
+                - 41
+            "3":
+                - 2
+                - 13
+                - 16
+            "4": 3.13.13
+            "5": 0.25.1
+            "12": 0.25.1
+            "13": linux-x86_64
+batch_size:
+    value: 16
+config:
+    value: configs/edsr_x2.yaml
+crit:
+    value: MSE
+epochs:
+    value: 500
+lr:
+    value: "1e-4"
+model:
+    value: edsr
+opt:
+    value: Adam
+patch_size:
+    value: 96
+project_name:
+    value: EDSR_X2
+save_dir:
+    value: output/edsr_x2
+scale:
+    value: 2
+train_dir:
+    value: data/DIV2K/DIV2K_train_HR
+val_dir:
+    value: data/DIV2K/DIV2K_valid_HR

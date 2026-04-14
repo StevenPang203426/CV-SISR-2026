@@ -114,10 +114,13 @@ def main():
     主函数，负责训练和验证流程
     """
     args = setup_from_yaml()
-    # 设置设备为 GPU
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # device = torch.device(f'cuda:3')
-    torch.cuda.set_device(device)
+    # 设置设备
+    if torch.cuda.is_available():
+        device = torch.device('cuda:0')
+        # device = torch.device('cuda:3')
+        torch.cuda.set_device(device)
+    else:
+        device = torch.device('cpu')
 
     # 加载训练集和验证集
     train_set = SRDataset(args.model, args.train_dir, scale=args.scale, patch_size=args.patch_size, augment=True, is_train=True)
@@ -164,7 +167,8 @@ def main():
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='max', factor=0.5, patience=10, min_lr=1e-6)
 
     # 初始化 wandb
-    wandb.init(project="SISR", config=vars(args), name=f"{args.model}_x{args.scale}")
+    project_name = getattr(args, "project_name", f"{args.model.upper()}_X{args.scale}")
+    wandb.init(project=project_name, config=vars(args), name=f"{args.model}_x{args.scale}")
 
     # 创建保存目录
     os.makedirs(args.save_dir, exist_ok=True)
@@ -187,6 +191,7 @@ def main():
         log_line(fp, f"LR: {args.lr}")
         log_line(fp, f"Optimizer: {args.opt}")
         log_line(fp, f"Criterion: {args.crit}")
+        log_line(fp, f"Wandb Project: {project_name}")
         log_line(fp, "====================")
         best = 0.0
 
