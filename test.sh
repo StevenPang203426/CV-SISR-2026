@@ -4,5 +4,4 @@ python test.py \
   --model edsr \
   --scale 2 \
   --save_images \
-  --out_dir demo/edsr_x2 \
-  --json 
+  --out_dir output/edsr_x2/test/original

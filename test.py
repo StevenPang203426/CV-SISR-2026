@@ -2,6 +2,7 @@ import os
 import argparse
 import time
 import json
+from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 from PIL import Image
@@ -24,13 +25,17 @@ def main():
     p.add_argument('--model', required=True, choices=MODELS.keys())
     p.add_argument('--scale', type=int, default=2)
     p.add_argument('--save_images', action='store_true')
-    p.add_argument('--out_dir', default='demo/srcnn_x2')
-    p.add_argument('--json', action='store_true')
+    p.add_argument('--out_dir', default=None, help='Directory for SR/LR outputs and metrics.json')
+    p.add_argument('--json', default=None, help='Optional custom path for metrics json file')
     args = p.parse_args()
+
+    dataset_name = os.path.basename(os.path.abspath(args.test_dir))
+    out_dir = Path(args.out_dir) if args.out_dir else Path('output') / f"{args.model}_x{args.scale}" / 'test' / dataset_name
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     test_set = SRDataset(args.model, args.test_dir, scale=args.scale, is_train=False)
-    loader = DataLoader(test_set, batch_size=1, shuffle=False )
+    loader = DataLoader(test_set, batch_size=1, shuffle=False)
 
     model = {
         'srcnn': SRCNN(in_channels=3),
@@ -49,7 +54,6 @@ def main():
     params = count_params_m(model)
     flops_g = profile_flops_g(model, inp_size)
 
-    os.makedirs(args.out_dir, exist_ok=True)
     psnrs, ssims, n, t = [], [], 0, 0.0
     image_metrics = []
 
@@ -72,13 +76,13 @@ def main():
             "ssim_y": ssim
         })
         if args.save_images:
-            sr_img.save(os.path.join(args.out_dir, f'{i:02d}_SR.png'))
-            lr_img.save(os.path.join(args.out_dir, f'{i:02d}_LR.png'))
+            sr_img.save(out_dir / f'{i:02d}_SR.png')
+            lr_img.save(out_dir / f'{i:02d}_LR.png')
 
     summary = {
         "model": args.model,
         "scale": args.scale,
-        "dataset": os.path.basename(os.path.abspath(args.test_dir)),
+        "dataset": dataset_name,
         "num_images": n,
         "psnr_y": sum(psnrs) / len(psnrs),
         "ssim_y": sum(ssims) / len(ssims),
@@ -91,9 +95,12 @@ def main():
         f"Avg PSNR(Y): {summary['psnr_y']:.2f} dB | SSIM(Y): {summary['ssim_y']} | "
         f"Params: {summary['params']} | FLOPs: {summary['flops_G']}G | FPS: {summary['fps']:.2f}"
     )
-    if args.json or True:
-        with open(os.path.join(args.out_dir, 'metrics.json'), 'w') as f:
-            json.dump(summary, f, indent=2)
+
+    json_path = Path(args.json) if args.json else out_dir / 'metrics.json'
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(summary, f, indent=2)
+    print(f"Metrics saved to {json_path}")
 
 
 if __name__ == '__main__':

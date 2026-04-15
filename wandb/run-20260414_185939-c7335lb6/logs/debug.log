@@ -17,3 +17,8 @@ config: {'config': 'configs/espcn_x4.yaml', 'model': 'espcn', 'scale': 4, 'train
 2026-04-14 18:59:42,545 INFO    MainThread:248520 [wandb_run.py:_redirect():2442] Wrapping output streams.
 2026-04-14 18:59:42,545 INFO    MainThread:248520 [wandb_run.py:_redirect():2465] Redirects installed.
 2026-04-14 18:59:42,549 INFO    MainThread:248520 [wandb_init.py:init():1082] run started, returning control to user process
+2026-04-15 02:10:11,993 INFO    MainThread:248520 [wandb_run.py:_finish():2291] finishing run stevenpang203426-fudan-university-school-of-management/ESPCN_X4/c7335lb6
+2026-04-15 02:10:11,993 INFO    MainThread:248520 [wandb_run.py:_atexit_cleanup():2490] got exitcode: 0
+2026-04-15 02:10:11,994 INFO    MainThread:248520 [wandb_run.py:_restore():2472] restore
+2026-04-15 02:10:11,994 INFO    MainThread:248520 [wandb_run.py:_restore():2478] restore done
+2026-04-15 02:10:24,195 INFO    MainThread:248520 [wandb_run.py:_footer_sync_info():3868] logging synced files
