@@ -10,4 +10,4 @@ train:
   lr: 1e-4
   opt: Adam
   crit: MSE
-  save_dir: output/srcnn_x2
+  save_dir: experiments/srcnn_x2

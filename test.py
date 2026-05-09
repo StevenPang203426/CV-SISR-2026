@@ -1,106 +1,63 @@
+"""
+测试入口脚本
+=============
+
+在基准数据集上评估模型，输出 PSNR/SSIM/参数量/FLOPs/FPS 报告。
+
+用法::
+
+    python test.py --ckpt output/edsr_x2/best.pt \\
+                   --test_dir data/datasets/Set5 \\
+                   --model edsr --scale 2 --save_images
+"""
+
 import os
 import argparse
-import time
-import json
 from pathlib import Path
+
 import torch
 from torch.utils.data import DataLoader
-from PIL import Image
+
 from data.dataset import SRDataset
-from utils.metrics import psnr_y, ssim_y
-from utils.profile import count_params_m, profile_flops_g
-from models.srcnn import SRCNN
-from models.fsrcnn import FSRCNN
-from models.espcn import ESPCN
-from models.edsr import EDSR
-from models.imdn import IMDN
+from models import build_model, REGISTRY
+from core.checkpoint import load_checkpoint
+from core.evaluator import Evaluator
 
-MODELS = {'srcnn': SRCNN, 'fsrcnn': FSRCNN, 'espcn': ESPCN, 'edsr': EDSR, 'imdn': IMDN}
 
-@torch.no_grad()
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--ckpt', required=True)
-    p.add_argument('--test_dir', required=True)
-    p.add_argument('--model', required=True, choices=MODELS.keys())
+    p.add_argument('--ckpt', required=True, help='模型检查点路径')
+    p.add_argument('--test_dir', required=True, help='测试集目录')
+    p.add_argument('--model', required=True, choices=REGISTRY.keys())
     p.add_argument('--scale', type=int, default=2)
     p.add_argument('--save_images', action='store_true')
-    p.add_argument('--out_dir', default=None, help='Directory for SR/LR outputs and metrics.json')
-    p.add_argument('--json', default=None, help='Optional custom path for metrics json file')
+    p.add_argument('--out_dir', default=None, help='SR/LR 输出和 metrics.json 的目录')
+    p.add_argument('--json', default=None, help='自定义 metrics json 路径')
     args = p.parse_args()
 
     dataset_name = os.path.basename(os.path.abspath(args.test_dir))
-    out_dir = Path(args.out_dir) if args.out_dir else Path('output') / f"{args.model}_x{args.scale}" / 'test' / dataset_name
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = Path(args.out_dir) if args.out_dir else None
+    json_path = Path(args.json) if args.json else None
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # 构建模型并加载权重
+    model = build_model(args.model, scale=args.scale, in_channels=3)
+    load_checkpoint(model, args.ckpt, device='cpu')
+    model = model.to(device).eval()
+
+    # 数据集
     test_set = SRDataset(args.model, args.test_dir, scale=args.scale, is_train=False)
     loader = DataLoader(test_set, batch_size=1, shuffle=False)
 
-    model = {
-        'srcnn': SRCNN(in_channels=3),
-        'fsrcnn': FSRCNN(in_channels=3, scale=args.scale),
-        'espcn': ESPCN(in_channels=3, scale=args.scale),
-        'edsr': EDSR(in_channels=3, scale=args.scale),
-        'imdn': IMDN(in_channels=3, scale=args.scale)
-    }[args.model]
-    state = torch.load(args.ckpt, map_location='cpu')
-    model.load_state_dict(state['model'])
-    model = model.to(device).eval()
-
-    example = next(iter(loader))
-    lr = example['lr']
-    inp_size = (1,) + (lr.shape[1:])
-    params = count_params_m(model)
-    flops_g = profile_flops_g(model, inp_size)
-
-    psnrs, ssims, n, t = [], [], 0, 0.0
-    image_metrics = []
-
-    for i, b in enumerate(loader, start=1):
-        lr, hr = b['lr'].to(device), b['hr'].to(device)
-        st = time.time()
-        sr = model(lr)
-        t += time.time() - st
-        n += 1
-        to_uint8 = lambda x: (x.clamp(0, 1).cpu().permute(1, 2, 0).numpy() * 255.0).round().astype('uint8')
-        sr_img, hr_img = Image.fromarray(to_uint8(sr[0])), Image.fromarray(to_uint8(hr[0]))
-        lr_img = Image.fromarray(to_uint8(lr[0]))
-        psnr = psnr_y(sr_img, hr_img, shave=args.scale)
-        psnrs.append(psnr)
-        ssim = ssim_y(sr_img, hr_img, shave=args.scale)
-        ssims.append(ssim)
-        image_metrics.append({
-            "image_index": i,
-            "psnr_y": psnr,
-            "ssim_y": ssim
-        })
-        if args.save_images:
-            sr_img.save(out_dir / f'{i:02d}_SR.png')
-            lr_img.save(out_dir / f'{i:02d}_LR.png')
-
-    summary = {
-        "model": args.model,
-        "scale": args.scale,
-        "dataset": dataset_name,
-        "num_images": n,
-        "psnr_y": sum(psnrs) / len(psnrs),
-        "ssim_y": sum(ssims) / len(ssims),
-        "params": params,
-        "flops_G": round(flops_g, 4) if flops_g >= 0 else None,
-        "fps": round(n / max(t, 1e-9), 3),
-        "image_metrics": image_metrics
-    }
-    print(
-        f"Avg PSNR(Y): {summary['psnr_y']:.2f} dB | SSIM(Y): {summary['ssim_y']} | "
-        f"Params: {summary['params']} | FLOPs: {summary['flops_G']}G | FPS: {summary['fps']:.2f}"
+    # 评估
+    evaluator = Evaluator(model, device, args.scale)
+    evaluator.test(
+        loader, dataset_name, args.model,
+        out_dir=out_dir,
+        save_images=args.save_images,
+        json_path=json_path,
     )
-
-    json_path = Path(args.json) if args.json else out_dir / 'metrics.json'
-    json_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(json_path, 'w', encoding='utf-8') as f:
-        json.dump(summary, f, indent=2)
-    print(f"Metrics saved to {json_path}")
 
 
 if __name__ == '__main__':

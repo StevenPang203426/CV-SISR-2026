@@ -10,4 +10,4 @@ train:
   lr: 1e-4
   opt: Adam
   crit: MSE
-  save_dir: output/edsr_x4
+  save_dir: experiments/edsr_x4
