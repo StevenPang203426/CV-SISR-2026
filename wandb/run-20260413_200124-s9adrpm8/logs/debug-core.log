@@ -1,1 +1,8 @@
-/root/.cache/wandb/logs/core-debug-20260413_200125.log
+{"time":"2026-04-13T20:01:25.033532039+08:00","level":"INFO","msg":"main: starting server","port-filename":"/tmp/tmp9e5u4tby/port-140760.txt","pid":140760,"log-level":0,"disable-analytics":false,"shutdown-on-parent-exit":false,"enable-dcgm-profiling":false}
+{"time":"2026-04-13T20:01:25.035074592+08:00","level":"INFO","msg":"server: will exit if parent process dies","ppid":140760}
+{"time":"2026-04-13T20:01:25.035066983+08:00","level":"INFO","msg":"server: accepting connections","addr":{"Name":"/tmp/wandb-140760-140816-2421993792/socket","Net":"unix"}}
+{"time":"2026-04-13T20:01:25.17145745+08:00","level":"INFO","msg":"connection: ManageConnectionData: new connection created","id":"1(@)"}
+{"time":"2026-04-13T20:01:25.176914667+08:00","level":"INFO","msg":"handleInformInit: received","streamId":"s9adrpm8","id":"1(@)"}
+{"time":"2026-04-13T20:01:26.568358737+08:00","level":"INFO","msg":"handleInformInit: stream started","streamId":"s9adrpm8","id":"1(@)"}
+{"time":"2026-04-13T20:01:32.531522715+08:00","level":"INFO","msg":"connection: cancelling request","id":"1(@)","requestId":"jnyd4znr1dw9"}
+{"time":"2026-04-13T21:14:19.511889576+08:00","level":"INFO","msg":"server: parent process exited, terminating service process"}
