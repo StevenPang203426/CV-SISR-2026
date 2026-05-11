@@ -5,7 +5,7 @@ cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 python infer.py \
   --ckpt experiments/edsr_x2/best.pt \
-  --input demo/DemoLRPhoto/cat3.jpg \
+  --input demo/real_images/cat3.jpg \
   --output experiments/edsr_x2/infer \
   --model edsr \
   --scale 2
