@@ -7,7 +7,7 @@
 #   bash scripts/test.sh                    # 测试全部（5模型×3规模×2数据集）
 #   bash scripts/test.sh --models edsr imdn # 只测 edsr 和 imdn
 #   bash scripts/test.sh --scales 2 4       # 只测 x2 和 x4
-#   bash scripts/test.sh --datasets Set5    # 只在 Set5 上测
+#   bash scripts/test.sh --test_dir data/datasets/Set5  # 自定义测试目录
 #   bash scripts/test.sh --save_images      # 同时保存 SR/LR 图像
 #
 set -euo pipefail
@@ -16,13 +16,12 @@ cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # ---- 默认值 ----
 ALL_MODELS=(srcnn fsrcnn espcn edsr imdn)
 ALL_SCALES=(2 3 4)
-ALL_DATASETS=(Set5 Set14)
+TEST_DIR="demo/original"
 SAVE_IMAGES=false
 
 # ---- 参数解析 ----
 MODELS=()
 SCALES=()
-DATASETS=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -38,11 +37,8 @@ while [[ $# -gt 0 ]]; do
                 SCALES+=("$1"); shift
             done
             ;;
-        --datasets)
-            shift
-            while [[ $# -gt 0 && ! "$1" =~ ^-- ]]; do
-                DATASETS+=("$1"); shift
-            done
+        --test_dir)
+            shift; TEST_DIR="$1"; shift
             ;;
         --save_images)
             SAVE_IMAGES=true; shift
@@ -54,9 +50,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 # 使用默认值（如果未指定）
-[[ ${#MODELS[@]} -eq 0 ]]   && MODELS=("${ALL_MODELS[@]}")
-[[ ${#SCALES[@]} -eq 0 ]]   && SCALES=("${ALL_SCALES[@]}")
-[[ ${#DATASETS[@]} -eq 0 ]] && DATASETS=("${ALL_DATASETS[@]}")
+[[ ${#MODELS[@]} -eq 0 ]] && MODELS=("${ALL_MODELS[@]}")
+[[ ${#SCALES[@]} -eq 0 ]] && SCALES=("${ALL_SCALES[@]}")
+
+DATASET_NAME=$(basename "$(realpath "$TEST_DIR")")
 
 # ---- 检查点路径查找（兼容 experiments/ 和 output/ 两种目录） ----
 find_ckpt() {
@@ -75,13 +72,13 @@ find_ckpt() {
 }
 
 # ---- 打印计划 ----
-total=$(( ${#MODELS[@]} * ${#SCALES[@]} * ${#DATASETS[@]} ))
+total=$(( ${#MODELS[@]} * ${#SCALES[@]} ))
 echo "============================================"
 echo "  SISR 批量测试"
 echo "============================================"
-echo "  模型:   ${MODELS[*]}"
-echo "  规模:   ${SCALES[*]}"
-echo "  数据集: ${DATASETS[*]}"
+echo "  模型:     ${MODELS[*]}"
+echo "  规模:     ${SCALES[*]}"
+echo "  测试目录: ${TEST_DIR} (${DATASET_NAME})"
 echo "  保存图像: ${SAVE_IMAGES}"
 echo "  总计: ${total} 组实验"
 echo "============================================"
@@ -97,44 +94,35 @@ for model in "${MODELS[@]}"; do
         ckpt=$(find_ckpt "$model" "$scale" 2>/dev/null || true)
         if [[ -z "$ckpt" ]]; then
             echo "[SKIP] ${model}_x${scale} — 未找到检查点"
-            ((skipped++))
+            skipped=$((skipped + 1))
             continue
         fi
 
-        for dataset in "${DATASETS[@]}"; do
-            test_dir="data/datasets/${dataset}"
-            if [[ ! -d "$test_dir" ]]; then
-                echo "[SKIP] ${model}_x${scale} on ${dataset} — 数据集目录不存在: ${test_dir}"
-                ((skipped++))
-                continue
-            fi
+        out_dir="experiments/${model}_x${scale}/test/${DATASET_NAME}"
+        echo "--------------------------------------------"
+        echo "[RUN]  ${model}_x${scale} on ${DATASET_NAME}"
+        echo "       ckpt: ${ckpt}"
+        echo "       out:  ${out_dir}"
 
-            out_dir="experiments/${model}_x${scale}/test/${dataset}"
-            echo "--------------------------------------------"
-            echo "[RUN]  ${model}_x${scale} on ${dataset}"
-            echo "       ckpt: ${ckpt}"
-            echo "       out:  ${out_dir}"
+        cmd=(python test.py
+            --ckpt "$ckpt"
+            --test_dir "$TEST_DIR"
+            --model "$model"
+            --scale "$scale"
+            --out_dir "$out_dir"
+        )
+        if $SAVE_IMAGES; then
+            cmd+=(--save_images)
+        fi
 
-            cmd=(python test.py
-                --ckpt "$ckpt"
-                --test_dir "$test_dir"
-                --model "$model"
-                --scale "$scale"
-                --out_dir "$out_dir"
-            )
-            if $SAVE_IMAGES; then
-                cmd+=(--save_images)
-            fi
-
-            if "${cmd[@]}"; then
-                echo "[DONE] ${model}_x${scale} on ${dataset}"
-                ((passed++))
-            else
-                echo "[FAIL] ${model}_x${scale} on ${dataset}"
-                ((failed++))
-            fi
-            echo ""
-        done
+        if "${cmd[@]}"; then
+            echo "[DONE] ${model}_x${scale} on ${DATASET_NAME}"
+            passed=$((passed + 1))
+        else
+            echo "[FAIL] ${model}_x${scale} on ${DATASET_NAME}"
+            failed=$((failed + 1))
+        fi
+        echo ""
     done
 done
 

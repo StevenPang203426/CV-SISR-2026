@@ -26,6 +26,8 @@ def main():
     p.add_argument('--output', default=None, help='输出路径')
     p.add_argument('--model', required=True, choices=REGISTRY.keys())
     p.add_argument('--scale', type=int, default=2)
+    p.add_argument('--tile_size', type=int, default=256, help='分块大小（默认256）')
+    p.add_argument('--tile_overlap', type=int, default=16, help='块重叠像素（默认16）')
     args = p.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -36,7 +38,10 @@ def main():
     model = model.to(device).eval()
 
     # 推理
-    inferencer = Inferencer(model, device, args.scale)
+    inferencer = Inferencer(
+        model, device, args.scale,
+        tile_size=args.tile_size, tile_overlap=args.tile_overlap,
+    )
     inferencer.run(args.input, args.output)
 
 
