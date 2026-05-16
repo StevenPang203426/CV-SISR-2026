@@ -56,11 +56,6 @@ done
 # 使用默认值（如果未指定）
 [[ ${#MODELS[@]} -eq 0 ]] && MODELS=("${ALL_MODELS[@]}")
 [[ ${#SCALES[@]} -eq 0 ]] && SCALES=("${ALL_SCALES[@]}")
-<<<<<<< HEAD
-
-DATASET_NAME=$(basename "$(realpath "$TEST_DIR")")
-=======
->>>>>>> 5a1768bb047aa059baf4a7ccca742c8fec77fb5d
 
 DATASET_NAME=$(basename "$(realpath "$TEST_DIR")")
 

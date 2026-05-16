@@ -23,12 +23,9 @@ env/
 *.swo
 *~
 
-# ---------- 实验输出（模型权重、日志、推理结果） ----------
-experiments/
-output/
-*.pt
-*.pth
-*.onnx
+# ---------- 实验输出（日志、推理结果） ----------
+experiments/*/test/
+experiments/*/infer/
 
 # ---------- Wandb ----------
 wandb/
