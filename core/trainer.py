@@ -8,6 +8,7 @@
 
 import os
 import time
+import json
 
 import torch
 import torch.nn as nn
@@ -142,7 +143,9 @@ class Trainer:
         # 历史记录
         train_loss_hist, train_psnr_hist = [], []
         val_loss_hist, val_psnr_hist = [], []
+        time_hist = []
         best = 0.0
+        best_epoch = 0
 
         with open(log_path, 'w', encoding='utf-8') as fp:
             # 记录超参数
@@ -175,6 +178,7 @@ class Trainer:
                 val_psnr_hist.append(val_psnr)
 
                 dt = time.time() - t0
+                time_hist.append(dt)
                 _log_line(
                     fp,
                     f"[Epoch {epoch:03d}] train_loss={train_loss:.4f} | "
@@ -195,6 +199,7 @@ class Trainer:
                 # 保存最佳模型
                 if val_psnr > best:
                     best = val_psnr
+                    best_epoch = epoch
                     save_checkpoint(
                         self.model,
                         os.path.join(args.save_dir, 'best.pt'),
@@ -209,4 +214,46 @@ class Trainer:
                 args.save_dir,
             )
             _log_line(fp, f"Training complete. Metrics plot saved to {args.save_dir}/metrics.png")
+
+            # ---- 生成 metrics.json ----
+            total_time = sum(time_hist)
+            metrics = {
+                'config': {
+                    'model':      args.model,
+                    'scale':      args.scale,
+                    'epochs':     args.epochs,
+                    'batch_size': args.batch_size,
+                    'patch_size': args.patch_size,
+                    'lr':         str(args.lr),
+                    'optimizer':  args.opt,
+                    'criterion':  args.crit,
+                },
+                'summary': {
+                    'total_epochs':     len(train_loss_hist),
+                    'best_epoch':       best_epoch,
+                    'best_val_psnr':    round(best, 4),
+                    'final_train_loss': round(train_loss_hist[-1], 6),
+                    'final_train_psnr': round(train_psnr_hist[-1], 4),
+                    'final_val_loss':   round(val_loss_hist[-1], 6),
+                    'final_val_psnr':   round(val_psnr_hist[-1], 4),
+                    'total_time_sec':   round(total_time, 1),
+                    'avg_epoch_sec':    round(total_time / max(len(time_hist), 1), 1),
+                },
+                'epochs': [
+                    {
+                        'epoch':      i + 1,
+                        'train_loss': round(train_loss_hist[i], 6),
+                        'train_psnr': round(train_psnr_hist[i], 4),
+                        'val_loss':   round(val_loss_hist[i], 6),
+                        'val_psnr':   round(val_psnr_hist[i], 4),
+                        'time':       round(time_hist[i], 1),
+                    }
+                    for i in range(len(train_loss_hist))
+                ],
+            }
+            json_path = os.path.join(args.save_dir, 'metrics.json')
+            with open(json_path, 'w', encoding='utf-8') as jf:
+                json.dump(metrics, jf, indent=2, ensure_ascii=False)
+            _log_line(fp, f"Metrics JSON saved to {json_path}")
+
             wandb.finish()
