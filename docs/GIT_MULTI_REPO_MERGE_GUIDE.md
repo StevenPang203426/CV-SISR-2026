@@ -98,46 +98,51 @@ git fetch bsrgan
 >
 > **一句话总结**：fetch 是"先看菜单"，pull 是"直接上菜" —— 融合外部仓库时，一定要先看再决定怎么合。
 
-### 第 3 步：为 Real-ESRGAN 创建 feature 分支并移入子目录
+### 第 3 步：为 Real-ESRGAN 创建 feature 分支并合并到子目录
 
 ```bash
 # 基于 main 创建 feature 分支
 git checkout -b feature/real-esrgan main
 
-# 合并 Real-ESRGAN 的主分支（允许无关历史合并）
-git merge real-esrgan/master --allow-unrelated-histories --no-commit
-
-# 此时 Real-ESRGAN 的文件会出现在根目录，需要移入子目录
-mkdir -p features/Real-ESRGAN
-
-# 移动所有非主仓库的文件到子目录
-# 方法：用 git mv 把 Real-ESRGAN 的文件移进去
-# （先看看合并进来了哪些新文件）
-git status
-
-# 将 Real-ESRGAN 的文件移入 features/Real-ESRGAN/
-# ⚠️ 注意：不要移动主仓库原有的文件
-# 典型做法：列出 Real-ESRGAN 独有的文件/目录，逐个 git mv
-git mv realesrgan/ features/Real-ESRGAN/
-git mv inference_realesrgan.py features/Real-ESRGAN/
-git mv setup.py features/Real-ESRGAN/     # 如果有
-# ... 对每个 Real-ESRGAN 特有的文件/目录执行 git mv
+# 直接把 Real-ESRGAN 的文件树读入子目录 —— 不经过根目录，不需要 git mv
+git read-tree --prefix=features/Real-ESRGAN/ -u real-esrgan/master
 
 # 提交
 git commit -m "feat: integrate Real-ESRGAN into features/Real-ESRGAN/"
 ```
+
+> **💡 Tips：为什么不 merge 到根目录再 `git mv`？**
+>
+> 如果用 `git merge real-esrgan/master`，feature 仓库的几百个文件会全部涌入根目录，和主仓库的文件混在一起。然后你得想办法分辨哪些是新来的、哪些是原有的，再一个个 `git mv` 进子目录 —— 文件少还好，文件一多就是噩梦。
+>
+> **`git read-tree --prefix=<dir>/ -u <branch>`** 的做法完全不同：它直接在 Git 的暂存区（index）层面，把目标分支的整棵文件树**带着路径前缀**写入，然后 `-u` 参数把暂存区的内容更新到工作区。结果就是 feature 仓库的文件**从一开始就在子目录里**，根目录干干净净，根本不需要移动任何东西。
+>
+> **对比**：
+> | | merge → git mv | read-tree --prefix |
+> |---|---|---|
+> | 文件落在哪 | 先落在根目录，手动移 | 直接落在子目录 |
+> | 操作步骤 | merge → 识别新文件 → 逐个/批量 mv → commit | read-tree → commit |
+> | 出错风险 | 高（可能误移主仓库文件） | 低（路径由 prefix 决定） |
+> | 保留 feature 历史 | 是（`--allow-unrelated-histories`） | 否（只读入一个快照） |
+>
+> **唯一取舍**：`read-tree` 不会在 `git log` 中保留 feature 仓库的提交历史（和 `subtree --squash` 效果一样）。如果你需要完整历史，可以先 `git merge --allow-unrelated-histories --no-commit`，再用 `git read-tree` 覆盖暂存区来修正路径：
+>
+> ```bash
+> git merge real-esrgan/master --allow-unrelated-histories --no-commit
+> git read-tree HEAD                              # 恢复主仓库的暂存区
+> git read-tree --prefix=features/Real-ESRGAN/ -u real-esrgan/master  # 把 feature 读入子目录
+> git commit -m "feat: integrate Real-ESRGAN (with full history)"
+> ```
+>
+> 这样既保留了两棵历史树的合并关系，又不需要手动移动任何文件。
 
 ### 第 4 步：为 BSRGAN 重复相同操作
 
 ```bash
 git checkout -b feature/bsrgan main
 
-git merge bsrgan/main --allow-unrelated-histories --no-commit
-
-mkdir -p features/BSRGAN
-git mv main_test_bsrgan.py features/BSRGAN/
-git mv models/network_rrdbnet.py features/BSRGAN/   # 示例
-# ... 移动所有 BSRGAN 特有的文件
+# 同样直接读入子目录
+git read-tree --prefix=features/BSRGAN/ -u bsrgan/main
 
 git commit -m "feat: integrate BSRGAN into features/BSRGAN/"
 ```
@@ -340,6 +345,78 @@ git subtree pull --prefix=features/Real-ESRGAN \
 | `prefix 'xxx' already exists` | 目标目录已存在 | 换个目录名，或先删除再重试 |
 | `can't squash-merge: 'xxx' was never added` | 首次 subtree 没用 add | 用 `git subtree add` 而不是 `pull` |
 | 合并后发现文件冲突 | 两个仓库有同名文件（如 README.md） | 手动解决冲突，优先保留主仓库版本 |
+
+### 已经 merge 了怎么撤销？
+
+根据你的情况选择对应方案：
+
+**情况 1：merge 后还没有 commit（用了 `--no-commit`，或 merge 正在冲突中）**
+
+```bash
+# 直接中止合并，回到 merge 之前的状态
+git merge --abort
+```
+
+**情况 2：merge 后已经 commit，但还没有 push**
+
+```bash
+# 查看 merge 前的那次提交（找到 merge 提交的上一个）
+git log --oneline -5
+
+# 方法 A：直接回退到 merge 前的提交（推荐，干净利落）
+git reset --hard HEAD~1
+# 如果 merge 产生了多个提交，用具体的 commit hash：
+# git reset --hard <merge前的commit-hash>
+
+# 方法 B：如果你不确定回退几步，用 reflog 找到 merge 前的状态
+git reflog
+# 找到 merge 之前的那条记录，比如 HEAD@{2}
+git reset --hard HEAD@{2}
+```
+
+**情况 3：merge 后已经 push 到远程（别人可能已经拉取了）**
+
+```bash
+# 用 revert 生成一个"反向提交"来撤销 merge（不会改写历史）
+# -m 1 表示保留主分支（第一个 parent）的内容
+git revert -m 1 <merge-commit-hash>
+git push origin main
+```
+
+> **💡 Tips：`reset` vs `revert` 怎么选？**
+>
+> | | `git reset --hard` | `git revert -m 1` |
+> |---|---|---|
+> | 原理 | 把分支指针直接移回去，抹掉 merge 提交 | 创建一个新提交，内容是 merge 的反操作 |
+> | 历史 | 被回退的提交从分支历史中消失 | 历史完整保留，多了一个 revert 提交 |
+> | 适用 | **没 push** —— 只影响本地，随便用 | **已 push** —— 不改写公共历史，安全 |
+> | 风险 | 如果已 push 后 reset，需要 `force push`，会影响其他协作者 | 无风险，但后续想重新合并该分支需要额外处理 |
+>
+> **一句话**：没推过用 `reset`，推过了用 `revert`。
+
+**情况 4：用了 `git subtree add` 想撤销**
+
+`subtree add` 本质上也是创建提交，撤销方式和上面一样：
+
+```bash
+# 没 push：直接回退（subtree add 通常生成 2 个提交）
+git reset --hard HEAD~2
+
+# 已 push：用 revert
+git log --oneline -5    # 找到 subtree add 产生的提交
+git revert <commit-hash>
+git push origin main
+```
+
+**情况 5：我在第 0 步创建了备份分支**
+
+如果你按照指南的第 0 步创建过 `backup/before-merge`，最简单：
+
+```bash
+# 直接用备份分支覆盖 main（这就是备份的意义）
+git checkout main
+git reset --hard backup/before-merge
+```
 
 ---
 
