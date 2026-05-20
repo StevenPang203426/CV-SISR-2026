@@ -7,11 +7,8 @@
 #   bash scripts/test.sh                    # 测试全部（5模型×3规模×2数据集）
 #   bash scripts/test.sh --models edsr imdn # 只测 edsr 和 imdn
 #   bash scripts/test.sh --scales 2 4       # 只测 x2 和 x4
-<<<<<<< HEAD
-#   bash scripts/test.sh --test_dir data/datasets/Set5  # 自定义测试目录
-=======
 #   bash scripts/test.sh --test_dir demo/original  # 自定义测试目录
->>>>>>> 5a1768bb047aa059baf4a7ccca742c8fec77fb5d
+
 #   bash scripts/test.sh --save_images      # 同时保存 SR/LR 图像
 #
 set -euo pipefail
@@ -56,12 +53,6 @@ done
 # 使用默认值（如果未指定）
 [[ ${#MODELS[@]} -eq 0 ]] && MODELS=("${ALL_MODELS[@]}")
 [[ ${#SCALES[@]} -eq 0 ]] && SCALES=("${ALL_SCALES[@]}")
-<<<<<<< HEAD
-
-DATASET_NAME=$(basename "$(realpath "$TEST_DIR")")
-=======
->>>>>>> 5a1768bb047aa059baf4a7ccca742c8fec77fb5d
-
 DATASET_NAME=$(basename "$(realpath "$TEST_DIR")")
 
 # ---- 检查点路径查找（experiments/ ） ----
