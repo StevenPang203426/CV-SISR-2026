@@ -8,6 +8,9 @@
         --ckpt experiments/espcn_x4/best.pt \
         --output web/models/espcn_x4.onnx
 
+    python scripts/export_onnx.py --model fsrcnn --scale 4 \
+        --ckpt experiments/fsrcnn_x4/best.pt \
+        --output web/models/fsrcnn_x4.onnx
     # 批量导出所有可用的轻量模型
     python scripts/export_onnx.py --all
 """
