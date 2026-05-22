@@ -15,7 +15,8 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$SCRIPT_DIR"
 
-MODELS=(srcnn edsr espcn)
+# models has changed, so hardcode it here for now
+MODELS=(fscrnn)
 SESSION_NAME="${TMUX_SESSION_NAME:-sisr_train}"
 
 if [[ $# -eq 0 ]]; then
