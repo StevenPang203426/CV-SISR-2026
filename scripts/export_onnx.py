@@ -28,7 +28,7 @@ from core.checkpoint import load_checkpoint
 
 
 def export_one(model_name: str, scale: int, ckpt_path: str, output_path: str,
-               opset: int = 11, input_h: int = 64, input_w: int = 64):
+               opset: int = 18, input_h: int = 64, input_w: int = 64):
     """导出单个模型为 ONNX。"""
     # 1. 构建模型并加载权重
     model = build_model(model_name, scale=scale, in_channels=3)
@@ -38,12 +38,12 @@ def export_one(model_name: str, scale: int, ckpt_path: str, output_path: str,
     # 2. 创建 dummy 输入
     dummy = torch.randn(1, 3, input_h, input_w)
 
-    # 3. 导出
+    # 3. 导出（兼容 PyTorch 2.x dynamo 导出器）
     os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
-    torch.onnx.export(
-        model,
-        dummy,
-        output_path,
+
+    # PyTorch >=2.6 默认使用 dynamo 导出器，需要用 dynamo=False
+    # 回退到 TorchScript 导出器以兼容 dynamic_axes + 低 opset
+    export_kwargs = dict(
         opset_version=opset,
         input_names=['input'],
         output_names=['output'],
@@ -52,6 +52,13 @@ def export_one(model_name: str, scale: int, ckpt_path: str, output_path: str,
             'output': {2: 'height', 3: 'width'},
         },
     )
+
+    # PyTorch >=2.6 支持 dynamo=False 参数
+    torch_version = tuple(int(x) for x in torch.__version__.split('+')[0].split('.')[:2])
+    if torch_version >= (2, 6):
+        export_kwargs['dynamo'] = False
+
+    torch.onnx.export(model, dummy, output_path, **export_kwargs)
 
     # 4. 打印模型大小
     size_kb = os.path.getsize(output_path) / 1024
@@ -86,7 +93,7 @@ def main():
     p.add_argument('--scale', type=int, help='Super-resolution scale factor')
     p.add_argument('--ckpt', type=str, help='Checkpoint path (.pt)')
     p.add_argument('--output', type=str, help='Output .onnx path')
-    p.add_argument('--opset', type=int, default=11, help='ONNX opset version (default: 11)')
+    p.add_argument('--opset', type=int, default=18, help='ONNX opset version (default: 18)')
     p.add_argument('--all', action='store_true', help='Export all available lightweight models')
     args = p.parse_args()
 
