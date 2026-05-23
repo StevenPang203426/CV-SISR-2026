@@ -6,7 +6,7 @@
 <title>SISR — AI Image Super-Resolution</title>
 
 <!-- ONNX Runtime Web -->
-<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.all.min.js"></script>
 
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1024,6 +1024,9 @@ async function getSession(modelName, scale) {
 
   setProgress('Loading ONNX model...', 10);
 
+  // Configure WASM backend paths
+  ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/';
+
   // Detect WebGPU
   let providers = ['wasm'];
   if (typeof navigator !== 'undefined' && navigator.gpu) {
@@ -1042,8 +1045,10 @@ async function getSession(modelName, scale) {
     setProgress('Model loaded.', 30);
     return session;
   } catch (err) {
+    console.error('[ORT] Session creation failed:', err);
     hideProgress();
-    throw new Error(`Failed to load model: ${modelPath}\n${err.message}`);
+    const msg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+    throw new Error(`Failed to load model: ${modelPath} ${msg}`);
   }
 }
 

@@ -27,15 +27,84 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from models import build_model
+from models.fsrcnn import FSRCNN
 from core.checkpoint import load_checkpoint
+
+
+def _load_fsrcnn_pixelshuffle(model, ckpt_path, scale):
+    """Load a deconv-trained FSRCNN checkpoint into a pixelshuffle model.
+
+    Copies all shared layers directly.  For the upsample layer, converts
+    ConvTranspose2d weights → Conv2d + PixelShuffle weights.
+    """
+    ckpt = torch.load(ckpt_path, map_location='cpu')
+    state = ckpt.get('model', ckpt) if isinstance(ckpt, dict) and 'model' in ckpt else ckpt
+
+    # Old checkpoints use 'deconv.*', new ones use 'upsample.*'
+    has_deconv_keys = any(k.startswith('deconv') for k in state)
+
+    ps_state = model.state_dict()
+
+    for k, v in state.items():
+        # Remap old key names
+        mapped_k = k.replace('deconv.', 'upsample.') if has_deconv_keys else k
+
+        if mapped_k.startswith('upsample'):
+            continue  # handle separately below
+        if mapped_k in ps_state:
+            ps_state[mapped_k] = v
+
+    # Convert upsample weights
+    if has_deconv_keys:
+        deconv_w = state['deconv.weight']  # [in_ch, out_ch, kH, kW]
+        deconv_b = state['deconv.bias']    # [out_ch]
+    else:
+        deconv_w = state['upsample.weight']
+        deconv_b = state['upsample.bias']
+
+    in_ch, C, kH, kW = deconv_w.shape
+    s = scale
+
+    # ConvTranspose2d: [in_ch, C, kH, kW]  →  Conv2d: [C*s*s, in_ch, kH, kW]
+    # Flip kernel (ConvTranspose uses cross-correlation with flipped kernel)
+    flipped = deconv_w.flip(2, 3)      # [in_ch, C, kH, kW]
+    transposed = flipped.permute(1, 0, 2, 3)  # [C, in_ch, kH, kW]
+
+    # Expand for PixelShuffle: each output channel c maps to s*s sub-pixel channels
+    conv_w = torch.zeros(C * s * s, in_ch, kH, kW)
+    conv_b = torch.zeros(C * s * s)
+    for c in range(C):
+        for r in range(s):
+            for q in range(s):
+                idx = c * s * s + r * s + q
+                conv_w[idx] = transposed[c]
+                conv_b[idx] = deconv_b[c] / (s * s)
+
+    ps_state['upsample.0.weight'] = conv_w
+    ps_state['upsample.0.bias'] = conv_b
+
+    model.load_state_dict(ps_state)
+    print(f'[INFO] Loaded deconv checkpoint and converted to pixelshuffle')
 
 
 def export_one(model_name: str, scale: int, ckpt_path: str, output_path: str,
                opset: int = 18, input_h: int = 64, input_w: int = 64):
     """导出单个模型为 ONNX。"""
     # 1. 构建模型并加载权重
-    model = build_model(model_name, scale=scale, in_channels=3)
-    load_checkpoint(model, ckpt_path, device='cpu')
+    #    FSRCNN: 使用 pixelshuffle 模式（避免 ConvTranspose2d，ORT Web 不支持）
+    extra_kwargs = {}
+    if model_name == 'fsrcnn':
+        extra_kwargs['upsample_mode'] = 'pixelshuffle'
+        print(f'[INFO] FSRCNN: using pixelshuffle mode for Web compatibility')
+
+    model = build_model(model_name, scale=scale, in_channels=3, **extra_kwargs)
+
+    # FSRCNN pixelshuffle: 需要从 deconv checkpoint 转换权重
+    if model_name == 'fsrcnn':
+        _load_fsrcnn_pixelshuffle(model, ckpt_path, scale)
+    else:
+        load_checkpoint(model, ckpt_path, device='cpu')
+
     model.eval()
 
     # 2. 创建 dummy 输入
