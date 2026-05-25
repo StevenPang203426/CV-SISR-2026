@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SISR — AI Image Super-Resolution</title>
+
+<!-- ONNX Runtime Web -->
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.all.min.js"></script>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Geist+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════
+   CSS RESET & VARIABLES
+   ═══════════════════════════════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep:    #08080A;
+  --bg-surface: #111114;
+  --bg-card:    #18181C;
+  --bg-hover:   #222228;
+  --border:     #2A2A32;
+  --border-lit: #3A3A44;
+  --text-pri:   #E8E6E3;
+  --text-sec:   #908E8B;
+  --text-dim:   #5A5856;
+  --accent:     #C9A84C;
+  --accent-dim: #8B7634;
+  --accent-glow: rgba(201, 168, 76, 0.15);
+  --red:        #D45B5B;
+  --green:      #5BBF7A;
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body:    'DM Sans', system-ui, sans-serif;
+  --font-mono:    'Geist Mono', 'SF Mono', monospace;
+  --radius:     8px;
+  --radius-lg:  14px;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html { font-size: 16px; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-pri);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle grain overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ═══════════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════════ */
+.app {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ═══════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════ */
+header {
+  padding: 48px 0 32px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.logo-mark {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.logo-tag {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  position: relative;
+  top: -2px;
+}
+
+.header-links {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.header-links a {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-sec);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: color var(--transition);
+}
+.header-links a:hover { color: var(--accent); }
+
+/* ═══════════════════════════════════════════
+   HERO TAGLINE
+   ═══════════════════════════════════════════ */
+.hero {
+  padding: 48px 0 40px;
+  text-align: center;
+}
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  font-weight: 400;
+  color: var(--text-pri);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  margin-bottom: 12px;
+}
+
+.hero h1 em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.hero p {
+  font-size: 0.95rem;
+  color: var(--text-sec);
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════════
+   CONTROLS BAR
+   ═══════════════════════════════════════════ */
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 20px 28px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.control-group label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.control-select {
+  appearance: none;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-pri);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  padding: 8px 32px 8px 12px;
+  cursor: pointer;
+  transition: border-color var(--transition);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' stroke='%23908E8B' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.control-select:hover { border-color: var(--border-lit); }
+.control-select:focus { outline: none; border-color: var(--accent); }
+
+/* Scale radio buttons */
+.scale-options {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 3px;
+}
+
+.scale-option {
+  display: block;
+  cursor: pointer;
+}
+
+.scale-option input { display: none; }
+
+.scale-option span {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 6px 14px;
+  border-radius: 5px;
+  color: var(--text-sec);
+  transition: all var(--transition);
+  user-select: none;
+}
+
+.scale-option input:checked + span {
+  background: var(--accent);
+  color: var(--bg-deep);
+  font-weight: 500;
+}
+
+.scale-option:hover span {
+  color: var(--text-pri);
+}
+
+/* Backend indicator */
+.backend-badge {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  letter-spacing: 0.06em;
+}
+.backend-badge .dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* ═══════════════════════════════════════════
+   UPLOAD ZONE
+   ═══════════════════════════════════════════ */
+.upload-zone {
+  position: relative;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: 56px 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 32px;
+  background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-card) 100%);
+  overflow: hidden;
+}
+
+.upload-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, var(--accent-glow) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.upload-zone:hover::before,
+.upload-zone.drag-over::before { opacity: 1; }
+
+.upload-zone:hover {
+  border-color: var(--accent-dim);
+}
+
+.upload-zone.drag-over {
+  border-color: var(--accent);
+  border-style: solid;
+}
+
+.upload-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.upload-icon {
+  position: relative;
+  z-index: 1;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border: 2px solid var(--border-lit);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color var(--transition);
+}
+.upload-zone:hover .upload-icon { border-color: var(--accent-dim); }
+
+.upload-icon svg {
+  width: 22px; height: 22px;
+  stroke: var(--text-sec);
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.upload-text {
+  position: relative;
+  z-index: 1;
+}
+
+.upload-text .primary {
+  font-size: 0.95rem;
+  color: var(--text-pri);
+  margin-bottom: 6px;
+}
+.upload-text .primary strong {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.upload-text .secondary {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+
+/* ═══════════════════════════════════════════
+   ACTION BUTTON
+   ═══════════════════════════════════════════ */
+.action-bar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 36px;
+}
+
+.btn-run {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 36px;
+  background: var(--accent);
+  color: var(--bg-deep);
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-transform: uppercase;
+}
+.btn-run:hover:not(:disabled) {
+  background: #D9B85A;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(201, 168, 76, 0.25);
+}
+.btn-run:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.btn-run svg {
+  width: 16px; height: 16px;
+  fill: currentColor;
+}
+
+/* ═══════════════════════════════════════════
+   PROGRESS BAR
+   ═══════════════════════════════════════════ */
+.progress-section {
+  display: none;
+  margin-bottom: 32px;
+}
+.progress-section.visible { display: block; }
+
+.progress-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-sec);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.progress-track {
+  height: 3px;
+  background: var(--bg-surface);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+  width: 0%;
+}
+
+/* indeterminate animation */
+.progress-fill.indeterminate {
+  width: 30%;
+  animation: indeterminate 1.4s ease-in-out infinite;
+}
+@keyframes indeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+/* ═══════════════════════════════════════════
+   COMPARISON VIEWER
+   ═══════════════════════════════════════════ */
+.comparison-section {
+  display: none;
+  margin-bottom: 32px;
+}
+.comparison-section.visible { display: block; }
+
+.comparison-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.comparison-header h2 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--text-pri);
+}
+
+.btn-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.btn-download:hover {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+}
+.btn-download svg {
+  width: 14px; height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* The slider comparison container */
+.comparison-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  cursor: col-resize;
+  user-select: none;
+}
+
+.comparison-container img {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.comparison-container .img-layer-lr {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.comparison-container .img-layer-lr img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%; /* matches parent container width so images align */
+  height: 100%;
+  object-fit: fill;
+}
+
+.comparison-slider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.comparison-slider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid var(--bg-deep);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+}
+
+.comparison-slider::after {
+  content: '⟨  ⟩';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--bg-deep);
+  font-weight: 600;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+.comparison-label {
+  position: absolute;
+  bottom: 16px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 4px;
+  z-index: 5;
+  pointer-events: none;
+}
+.comparison-label.label-lr {
+  left: 16px;
+  background: rgba(0,0,0,0.7);
+  color: var(--text-sec);
+}
+.comparison-label.label-sr {
+  right: 16px;
+  background: rgba(201, 168, 76, 0.2);
+  color: var(--accent);
+}
+
+/* ═══════════════════════════════════════════
+   STATS BAR
+   ═══════════════════════════════════════════ */
+.stats-bar {
+  display: none;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 16px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 48px;
+}
+.stats-bar.visible { display: flex; }
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-item .stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.stat-item .stat-value {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--text-pri);
+  font-weight: 500;
+}
+
+.stat-item .stat-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin-left: 16px;
+}
+
+/* ═══════════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════════ */
+footer {
+  padding: 32px 0 48px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+footer p {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+footer a {
+  color: var(--text-sec);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+footer a:hover { color: var(--accent); }
+
+/* ═══════════════════════════════════════════
+   TOAST NOTIFICATION
+   ═══════════════════════════════════════════ */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(120%);
+  padding: 12px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-pri);
+  z-index: 10000;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.toast.visible {
+  transform: translateX(-50%) translateY(0);
+}
+.toast.error { border-color: var(--red); color: var(--red); }
+
+/* ═══════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+.fade-in-delay-1 { animation-delay: 0.1s; opacity: 0; }
+.fade-in-delay-2 { animation-delay: 0.2s; opacity: 0; }
+.fade-in-delay-3 { animation-delay: 0.3s; opacity: 0; }
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════ */
+@media (max-width: 640px) {
+  header { flex-direction: column; gap: 12px; align-items: flex-start; }
+  .hero h1 { font-size: 2rem; }
+  .controls { gap: 16px; padding: 16px 20px; }
+  .comparison-container { border-radius: var(--radius); }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── HEADER ── -->
+  <header class="fade-in">
+    <div class="logo">
+      <span class="logo-mark">SISR</span>
+      <span class="logo-tag">Super-Resolution Lab</span>
+    </div>
+    <div class="header-links">
+      <a href="https://github.com/stevenpang203426/CV-SISR-2026" target="_blank">GitHub</a>
+      <a href="https://onnxruntime.ai/" target="_blank">ORT Web</a>
+    </div>
+  </header>
+
+  <!-- ── HERO ── -->
+  <section class="hero fade-in fade-in-delay-1">
+    <h1>Enhance your images with <em>neural precision</em></h1>
+    <p>Upload any image and watch our lightweight ESPCN / FSRCNN models upscale it
+       in real-time — entirely in your browser. No uploads, no servers, pure AI.</p>
+  </section>
+
+  <!-- ── CONTROLS ── -->
+  <div class="controls fade-in fade-in-delay-2">
+    <div class="control-group">
+      <label for="model-select">Model</label>
+      <select id="model-select" class="control-select">
+        <option value="espcn">ESPCN</option>
+        <option value="fsrcnn">FSRCNN</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label>Scale</label>
+      <div class="scale-options">
+        <label class="scale-option">
+          <input type="radio" name="scale" value="2" checked>
+          <span>2&times;</span>
+        </label>
+        <label class="scale-option">
+          <input type="radio" name="scale" value="3">
+          <span>3&times;</span>
+        </label>
+        <label class="scale-option">
+          <input type="radio" name="scale" value="4">
+          <span>4&times;</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="backend-badge" id="backend-badge">
+        <span class="dot"></span>WASM
+      </div>
+    </div>
+  </div>
+
+  <!-- ── UPLOAD ── -->
+  <div class="upload-zone fade-in fade-in-delay-3" id="upload-zone">
+    <input type="file" id="file-input" accept="image/png,image/jpeg,image/webp,image/bmp">
+    <div class="upload-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5l5 5"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+    </div>
+    <div class="upload-text">
+      <p class="primary">Drop an image here, or <strong>click to browse</strong></p>
+      <p class="secondary">PNG / JPG / WebP / BMP &mdash; recommended &le; 512 &times; 512</p>
+    </div>
+  </div>
+
+  <!-- ── RUN BUTTON ── -->
+  <div class="action-bar">
+    <button class="btn-run" id="btn-run" disabled>
+      <svg viewBox="0 0 16 16"><polygon points="3,1 13,8 3,15"/></svg>
+      Run Super-Resolution
+    </button>
+  </div>
+
+  <!-- ── PROGRESS ── -->
+  <div class="progress-section" id="progress-section">
+    <div class="progress-label">
+      <span id="progress-text">Loading model...</span>
+      <span id="progress-pct"></span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </div>
+
+  <!-- ── COMPARISON ── -->
+  <section class="comparison-section" id="comparison-section">
+    <div class="comparison-header">
+      <h2>Result</h2>
+      <button class="btn-download" id="btn-download">
+        <svg viewBox="0 0 16 16"><path d="M8 2v9m0 0l-3.5-3.5M8 11l3.5-3.5"/><path d="M2 13h12"/></svg>
+        Download SR
+      </button>
+    </div>
+
+    <div class="comparison-container" id="comparison-container">
+      <!-- SR image (full, behind) -->
+      <img id="img-sr" alt="Super-resolution result">
+      <!-- LR image layer (clipped) -->
+      <div class="img-layer-lr" id="img-layer-lr">
+        <img id="img-lr-overlay" alt="Low-resolution input">
+      </div>
+      <!-- Slider handle -->
+      <div class="comparison-slider" id="comparison-slider"></div>
+      <!-- Labels -->
+      <span class="comparison-label label-lr">Input (LR)</span>
+      <span class="comparison-label label-sr">Output (SR)</span>
+    </div>
+  </section>
+
+  <!-- ── STATS ── -->
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-item">
+      <span class="stat-label">Input</span>
+      <span class="stat-value" id="stat-input">—</span>
+    </div>
+    <div class="stat-item"><div class="stat-sep"></div></div>
+    <div class="stat-item">
+      <span class="stat-label">Output</span>
+      <span class="stat-value" id="stat-output">—</span>
+    </div>
+    <div class="stat-item"><div class="stat-sep"></div></div>
+    <div class="stat-item">
+      <span class="stat-label">Model</span>
+      <span class="stat-value" id="stat-model">—</span>
+    </div>
+    <div class="stat-item"><div class="stat-sep"></div></div>
+    <div class="stat-item">
+      <span class="stat-label">Inference</span>
+      <span class="stat-value" id="stat-time">—</span>
+    </div>
+    <div class="stat-item"><div class="stat-sep"></div></div>
+    <div class="stat-item">
+      <span class="stat-label">ONNX Size</span>
+      <span class="stat-value" id="stat-size">—</span>
+    </div>
+  </div>
+
+  <!-- ── FOOTER ── -->
+  <footer>
+    <p>SISR-Team8 &mdash; CV Super-Resolution 2026 &mdash;
+       Powered by <a href="https://onnxruntime.ai/" target="_blank">ONNX Runtime Web</a></p>
+  </footer>
+
+</div>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════ */
+const state = {
+  file: null,
+  imgElement: null,
+  session: null,
+  sessionKey: null,   // "espcn_x4" — cache key
+  srCanvas: null,
+  busy: false,
+};
+
+const MAX_PIXELS = 512 * 512;
+
+/* ═══════════════════════════════════════════
+   DOM REFS
+   ═══════════════════════════════════════════ */
+const $uploadZone    = document.getElementById('upload-zone');
+const $fileInput     = document.getElementById('file-input');
+const $btnRun        = document.getElementById('btn-run');
+const $btnDownload   = document.getElementById('btn-download');
+const $progress      = document.getElementById('progress-section');
+const $progressFill  = document.getElementById('progress-fill');
+const $progressText  = document.getElementById('progress-text');
+const $progressPct   = document.getElementById('progress-pct');
+const $comparison    = document.getElementById('comparison-section');
+const $container     = document.getElementById('comparison-container');
+const $imgSR         = document.getElementById('img-sr');
+const $imgLROverlay  = document.getElementById('img-lr-overlay');
+const $lrLayer       = document.getElementById('img-layer-lr');
+const $slider        = document.getElementById('comparison-slider');
+const $stats         = document.getElementById('stats-bar');
+const $toast         = document.getElementById('toast');
+const $backendBadge  = document.getElementById('backend-badge');
+
+/* ═══════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════ */
+function getModel()  { return document.getElementById('model-select').value; }
+function getScale()  { return parseInt(document.querySelector('input[name="scale"]:checked').value); }
+
+function showToast(msg, isError = false) {
+  $toast.textContent = msg;
+  $toast.className = 'toast visible' + (isError ? ' error' : '');
+  setTimeout(() => $toast.classList.remove('visible'), 3500);
+}
+
+function setProgress(text, pct = null) {
+  $progress.classList.add('visible');
+  $progressText.textContent = text;
+  if (pct === null) {
+    $progressFill.className = 'progress-fill indeterminate';
+    $progressPct.textContent = '';
+  } else {
+    $progressFill.className = 'progress-fill';
+    $progressFill.style.width = pct + '%';
+    $progressPct.textContent = pct + '%';
+  }
+}
+
+function hideProgress() {
+  $progress.classList.remove('visible');
+}
+
+/* ═══════════════════════════════════════════
+   FILE HANDLING
+   ═══════════════════════════════════════════ */
+// Drag & drop events
+$uploadZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  $uploadZone.classList.add('drag-over');
+});
+$uploadZone.addEventListener('dragleave', () => {
+  $uploadZone.classList.remove('drag-over');
+});
+$uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  $uploadZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length > 0) {
+    handleFile(e.dataTransfer.files[0]);
+  }
+});
+
+$fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length > 0) {
+    handleFile(e.target.files[0]);
+  }
+});
+
+function handleFile(file) {
+  if (!file.type.startsWith('image/')) {
+    showToast('Please upload an image file.', true);
+    return;
+  }
+  state.file = file;
+
+  const img = new Image();
+  img.onload = () => {
+    state.imgElement = img;
+    $btnRun.disabled = false;
+
+    // Update upload zone text
+    const text = $uploadZone.querySelector('.upload-text .primary');
+    text.innerHTML = `<strong>${file.name}</strong> &mdash; ${img.naturalWidth}&times;${img.naturalHeight}`;
+
+    showToast(`Loaded: ${file.name} (${img.naturalWidth}×${img.naturalHeight})`);
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+/* ═══════════════════════════════════════════
+   TENSOR CONVERSION
+   ═══════════════════════════════════════════ */
+function imageDataToTensor(imageData, width, height) {
+  const { data } = imageData;
+  const float32 = new Float32Array(3 * height * width);
+  const plane = height * width;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const srcIdx = (y * width + x) * 4;
+      const dstIdx = y * width + x;
+      float32[dstIdx]             = data[srcIdx]     / 255.0;  // R
+      float32[plane + dstIdx]     = data[srcIdx + 1] / 255.0;  // G
+      float32[plane * 2 + dstIdx] = data[srcIdx + 2] / 255.0;  // B
+    }
+  }
+  return new ort.Tensor('float32', float32, [1, 3, height, width]);
+}
+
+function tensorToCanvas(tensor, width, height) {
+  const float32 = tensor.data;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  const imageData = ctx.createImageData(width, height);
+  const rgba = imageData.data;
+  const plane = height * width;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const srcIdx = y * width + x;
+      const dstIdx = srcIdx * 4;
+      rgba[dstIdx]     = Math.round(clamp01(float32[srcIdx])             * 255);
+      rgba[dstIdx + 1] = Math.round(clamp01(float32[plane + srcIdx])     * 255);
+      rgba[dstIdx + 2] = Math.round(clamp01(float32[plane * 2 + srcIdx]) * 255);
+      rgba[dstIdx + 3] = 255;
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+
+/* ═══════════════════════════════════════════
+   MODEL LOADING & INFERENCE
+   ═══════════════════════════════════════════ */
+async function getSession(modelName, scale) {
+  const key = `${modelName}_x${scale}`;
+  if (state.session && state.sessionKey === key) {
+    return state.session;
+  }
+
+  setProgress('Loading ONNX model...', 10);
+
+  // Configure WASM backend paths
+  ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/';
+
+  // Detect WebGPU
+  let providers = ['wasm'];
+  if (typeof navigator !== 'undefined' && navigator.gpu) {
+    providers = ['webgpu', 'wasm'];
+    $backendBadge.innerHTML = '<span class="dot"></span>WebGPU';
+  }
+
+  const modelPath = `models/${key}.onnx`;
+
+  try {
+    const session = await ort.InferenceSession.create(modelPath, {
+      executionProviders: providers,
+    });
+    state.session = session;
+    state.sessionKey = key;
+    setProgress('Model loaded.', 30);
+    return session;
+  } catch (err) {
+    console.error('[ORT] Session creation failed:', err);
+    hideProgress();
+    const msg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+    throw new Error(`Failed to load model: ${modelPath} ${msg}`);
+  }
+}
+
+async function runSR() {
+  if (state.busy || !state.imgElement) return;
+  state.busy = true;
+  $btnRun.disabled = true;
+
+  const modelName = getModel();
+  const scale = getScale();
+  const img = state.imgElement;
+
+  try {
+    // 1. Size check & auto-resize
+    let w = img.naturalWidth;
+    let h = img.naturalHeight;
+    let resized = false;
+
+    if (w * h > MAX_PIXELS) {
+      const ratio = Math.sqrt(MAX_PIXELS / (w * h));
+      w = Math.floor(w * ratio);
+      h = Math.floor(h * ratio);
+      resized = true;
+      showToast(`Image auto-resized to ${w}×${h} (max ${Math.round(Math.sqrt(MAX_PIXELS))}²)`);
+    }
+
+    // 2. Draw to canvas to get ImageData
+    setProgress('Preparing image...', 20);
+    const srcCanvas = document.createElement('canvas');
+    srcCanvas.width = w;
+    srcCanvas.height = h;
+    const srcCtx = srcCanvas.getContext('2d');
+    srcCtx.drawImage(img, 0, 0, w, h);
+    const imageData = srcCtx.getImageData(0, 0, w, h);
+
+    // 3. Convert to tensor
+    setProgress('Converting to tensor (HWC → CHW)...', 25);
+    const inputTensor = imageDataToTensor(imageData, w, h);
+
+    // 4. Load model
+    const session = await getSession(modelName, scale);
+
+    // 5. Inference
+    setProgress('Running inference...', 50);
+    await new Promise(r => setTimeout(r, 50)); // let UI update
+
+    const t0 = performance.now();
+    const results = await session.run({ input: inputTensor });
+    const t1 = performance.now();
+    const inferMs = t1 - t0;
+
+    const outputTensor = results.output;
+    setProgress('Post-processing...', 85);
+
+    // 6. Output tensor → canvas
+    const outW = outputTensor.dims[3];
+    const outH = outputTensor.dims[2];
+    const srCanvas = tensorToCanvas(outputTensor, outW, outH);
+    state.srCanvas = srCanvas;
+
+    // 7. Create LR display (bicubic upscaled for comparison)
+    const lrUpCanvas = document.createElement('canvas');
+    lrUpCanvas.width = outW;
+    lrUpCanvas.height = outH;
+    const lrCtx = lrUpCanvas.getContext('2d');
+    lrCtx.imageSmoothingEnabled = true;
+    lrCtx.imageSmoothingQuality = 'high';
+    lrCtx.drawImage(srcCanvas, 0, 0, outW, outH);
+
+    // 8. Display
+    setProgress('Done!', 100);
+    await new Promise(r => setTimeout(r, 300));
+    hideProgress();
+
+    // Set images
+    $imgSR.src = srCanvas.toDataURL('image/png');
+    $imgLROverlay.src = lrUpCanvas.toDataURL('image/png');
+
+    // Show comparison
+    $comparison.classList.add('visible');
+    $stats.classList.add('visible');
+    resetSlider(50);
+
+    // Update stats
+    document.getElementById('stat-input').textContent = `${w} × ${h}`;
+    document.getElementById('stat-output').textContent = `${outW} × ${outH}`;
+    document.getElementById('stat-model').textContent = `${modelName.toUpperCase()} ×${scale}`;
+    document.getElementById('stat-time').textContent = `${inferMs.toFixed(0)} ms`;
+
+    // Estimate model size
+    try {
+      const resp = await fetch(`models/${modelName}_x${scale}.onnx`, { method: 'HEAD' });
+      const bytes = parseInt(resp.headers.get('content-length') || '0');
+      document.getElementById('stat-size').textContent = bytes > 0
+        ? `${(bytes / 1024).toFixed(1)} KB`
+        : '—';
+    } catch { document.getElementById('stat-size').textContent = '—'; }
+
+  } catch (err) {
+    hideProgress();
+    showToast(err.message, true);
+    console.error(err);
+  } finally {
+    state.busy = false;
+    $btnRun.disabled = !state.imgElement;
+  }
+}
+
+$btnRun.addEventListener('click', runSR);
+
+/* ═══════════════════════════════════════════
+   DOWNLOAD
+   ═══════════════════════════════════════════ */
+$btnDownload.addEventListener('click', () => {
+  if (!state.srCanvas) return;
+  const link = document.createElement('a');
+  const baseName = state.file ? state.file.name.replace(/\.[^.]+$/, '') : 'image';
+  link.download = `${baseName}_${getModel()}_x${getScale()}.png`;
+  link.href = state.srCanvas.toDataURL('image/png');
+  link.click();
+});
+
+/* ═══════════════════════════════════════════
+   COMPARISON SLIDER
+   ═══════════════════════════════════════════ */
+let sliderActive = false;
+
+function setSliderPosition(pct) {
+  pct = Math.max(0, Math.min(100, pct));
+  $slider.style.left = pct + '%';
+  $lrLayer.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
+}
+
+function resetSlider(pct = 50) {
+  setSliderPosition(pct);
+}
+
+function getSliderPct(clientX) {
+  const rect = $container.getBoundingClientRect();
+  return ((clientX - rect.left) / rect.width) * 100;
+}
+
+$container.addEventListener('mousedown', (e) => {
+  sliderActive = true;
+  setSliderPosition(getSliderPct(e.clientX));
+});
+document.addEventListener('mousemove', (e) => {
+  if (sliderActive) setSliderPosition(getSliderPct(e.clientX));
+});
+document.addEventListener('mouseup', () => { sliderActive = false; });
+
+// Touch support
+$container.addEventListener('touchstart', (e) => {
+  sliderActive = true;
+  setSliderPosition(getSliderPct(e.touches[0].clientX));
+}, { passive: true });
+document.addEventListener('touchmove', (e) => {
+  if (sliderActive) setSliderPosition(getSliderPct(e.touches[0].clientX));
+}, { passive: true });
+document.addEventListener('touchend', () => { sliderActive = false; });
+
+/* ═══════════════════════════════════════════
+   KEYBOARD SHORTCUT
+   ═══════════════════════════════════════════ */
+document.addEventListener('keydown', (e) => {
+  // Ctrl/Cmd + Enter → run
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !$btnRun.disabled) {
+    e.preventDefault();
+    runSR();
+  }
+});
+
+/* ═══════════════════════════════════════════
+   INIT — detect WebGPU
+   ═══════════════════════════════════════════ */
+(async () => {
+  if (navigator.gpu) {
+    try {
+      const adapter = await navigator.gpu.requestAdapter();
+      if (adapter) {
+        $backendBadge.innerHTML = '<span class="dot"></span>WebGPU';
+      }
+    } catch {}
+  }
+})();
+</script>
+
+</body>
+</html>
