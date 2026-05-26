@@ -19,6 +19,7 @@ from .fsrcnn import FSRCNN
 from .espcn import ESPCN
 from .edsr import EDSR
 from .imdn import IMDN
+from .rrdbnet import RRDBNet
 
 # ---- 注册表 ----
 REGISTRY: dict[str, type] = {
@@ -27,6 +28,8 @@ REGISTRY: dict[str, type] = {
     'espcn':  ESPCN,
     'edsr':   EDSR,
     'imdn':   IMDN,
+    'rrdb':   RRDBNet,
+    'rrdbnet': RRDBNet,
 }
 
 

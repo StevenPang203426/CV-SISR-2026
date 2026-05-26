@@ -318,17 +318,18 @@ class DegradationPipeline:
 
 ## 六、新增文件清单
 
-| 文件 | 作用 | 优先级 |
-|------|------|--------|
-| `models/rrdbnet.py` | 从 BSRGAN 移植 RRDB 网络，适配我们的 `build_model()` 注册表 | 必须 |
-| `data/degradation.py` | 退化管道，从 BSRGAN 移植核心函数并封装为可配置的 class | 必须 |
-| `data/blind_sr_dataset.py` | 在线退化 Dataset：每次取样时随机退化 HR → LR | 实验5需要 |
-| `scripts/eval_blind_sr.py` | 统一评估脚本：加载多个预训练模型，在多种退化下推理并计算指标 | 必须 |
-| `scripts/visualize_degradation.py` | 退化管道可视化脚本 | 必须 |
-| `scripts/finetune_realesrnet.py` | 微调脚本（部分冻结 + 小 lr） | 可选 |
-| `scripts/calc_niqe.py` | 无参考图像质量评估（NIQE / BRISQUE） | 实验3需要 |
-| `pretrained/` | 预训练模型存放目录 | 必须 |
-| `experiments/blind_sr/` | 实验结果输出目录 | 必须 |
+| 文件 | 作用 | 优先级 | 状态 |
+|------|------|--------|------|
+| `models/rrdbnet.py` | RRDB 网络，自动处理预训练权重 key 映射（RRDB_trunk→body, HRconv→hr_conv, RDB→rdb） | 必须 | ✅ 已完成 |
+| `data/degradation.py` | 退化管道，3 种模式 (bicubic/bsrgan/custom)，含 `DegradationPipeline` 封装类 | 必须 | ✅ 已完成 |
+| `data/blind_sr_dataset.py` | 在线退化 Dataset：每次取样时随机退化 HR → LR | 实验5需要 | 待实现 |
+| `scripts/download_pretrained.py` | 预训练模型下载脚本，支持 `--proxy`、`--force`、ghproxy 镜像提示 | 必须 | ✅ 已完成 |
+| `scripts/eval_blind_sr.py` | 统一评估脚本，支持 `--experiment 1/2/3` 分别运行三组核心实验 | 必须 | ✅ 已完成 |
+| `scripts/visualize_degradation.py` | 退化可视化：退化因素对比面板 + BSRGAN 多样性面板 | 必须 | ✅ 已完成 |
+| `scripts/finetune_realesrnet.py` | 微调脚本（部分冻结 + 小 lr） | 可选 | 待实现 |
+| `scripts/calc_niqe.py` | 无参考质量评估 (NIQE/BRISQUE)，支持单目录和多模型对比模式 | 实验3需要 | ✅ 已完成 |
+| `pretrained/` | 预训练模型存放目录（.gitignore 已配置忽略 .pth 文件） | 必须 | ✅ 已创建 |
+| `experiments/blind_sr/` | 实验结果输出目录（含 eval_results/ 和 visualizations/ 子目录） | 必须 | ✅ 已创建 |
 
 ---
 
@@ -336,36 +337,95 @@ class DegradationPipeline:
 
 ### 第 1 天：基础设施
 
-| 步骤 | 工作 | 产出 |
-|------|------|------|
-| 1.1 | 下载 5 个预训练模型到 `pretrained/` | .pth 文件 |
-| 1.2 | 移植 `models/rrdbnet.py`，注册到 `build_model()` | 能加载所有预训练权重 |
-| 1.3 | 编写统一推理脚本 `scripts/eval_blind_sr.py` | 能用任意模型推理任意图片 |
-| 1.4 | 验证：用 BSRGAN.pth 推理 `testsets/RealSRSet/` 的图片，对比原仓库输出 | 确认移植正确 |
+| 步骤 | 工作 | 产出 | 状态 |
+|------|------|------|------|
+| 1.1 | 下载 5 个预训练模型到 `pretrained/` | .pth 文件 | ⏳ 需手动执行 `python scripts/download_pretrained.py` |
+| 1.2 | 移植 `models/rrdbnet.py`，注册到 `build_model()` | 能加载所有预训练权重 | ✅ 已完成 |
+| 1.3 | 编写统一推理脚本 `scripts/eval_blind_sr.py` | 能用任意模型推理任意图片 | ✅ 已完成 |
+| 1.4 | 验证：用 BSRGAN.pth 推理 `testsets/RealSRSet/` 的图片，对比原仓库输出 | 确认移植正确 | ⏳ 需下载模型后执行 |
 
 ### 第 2 天：退化管道
 
-| 步骤 | 工作 | 产出 |
-|------|------|------|
-| 2.1 | 移植 `data/degradation.py`，处理依赖问题 | 可配置的退化管道 |
-| 2.2 | 编写 `scripts/visualize_degradation.py` | 退化可视化面板图 |
-| 2.3 | 运行实验 4：退化管道可视化 | 多样退化结果图 |
+| 步骤 | 工作 | 产出 | 状态 |
+|------|------|------|------|
+| 2.1 | 移植 `data/degradation.py`，处理依赖问题 | 可配置的退化管道 | ✅ 已完成 |
+| 2.2 | 编写 `scripts/visualize_degradation.py` | 退化可视化面板图 | ✅ 已完成 |
+| 2.3 | 运行实验 4：退化管道可视化 | 多样退化结果图 | ⏳ 需手动执行 |
 
 ### 第 3 天：核心实验
 
-| 步骤 | 工作 | 产出 |
-|------|------|------|
-| 3.1 | 运行实验 1：Bicubic SR vs Blind SR 在多退化下的对比 | PSNR/SSIM 表格 + 对比图 |
-| 3.2 | 运行实验 2：不同退化类型的消融 | 折线图 |
-| 3.3 | 运行实验 3：PSNR vs GAN 感知质量对比 | NIQE/BRISQUE 表格 + zoom-in 对比 |
+| 步骤 | 工作 | 产出 | 状态 |
+|------|------|------|------|
+| 3.1 | 运行实验 1：Bicubic SR vs Blind SR 在多退化下的对比 | PSNR/SSIM 表格 + 对比图 | ⏳ 需手动执行 |
+| 3.2 | 运行实验 2：不同退化类型的消融 | 折线图 | ⏳ 需手动执行 |
+| 3.3 | 运行实验 3：PSNR vs GAN 感知质量对比 | NIQE/BRISQUE 表格 + zoom-in 对比 | ⏳ 需手动执行 |
 
 ### 第 4 天（可选）：微调
 
-| 步骤 | 工作 | 产出 |
+| 步骤 | 工作 | 产出 | 状态 |
+|------|------|------|------|
+| 4.1 | 编写 `data/blind_sr_dataset.py` 和 `scripts/finetune_realesrnet.py` | 训练代码 | 待实现 |
+| 4.2 | 用 DIV2K HR + BSRGAN 退化生成训练对，微调 RealESRNet | 微调权重 | 待实现 |
+| 4.3 | 对比微调前后效果 | 对比表格 | 待实现 |
+
+---
+
+## 七附：实现备注
+
+> 以下记录代码编写过程中的设计决策和注意事项。
+
+### rrdbnet.py 权重映射
+
+原始 BSRGAN/Real-ESRGAN 权重的 key 和我们移植后的 key 不同，`load_pretrained()` 自动处理以下映射：
+
+```
+RRDB_trunk.X  →  body.X          (主干网络)
+HRconv         →  hr_conv          (高分辨率卷积)
+.RDB1.         →  .rdb1.           (Dense Block)
+.RDB2.         →  .rdb2.
+.RDB3.         →  .rdb3.
+```
+
+同时处理了 Real-ESRGAN 权重可能包裹在 `params_ema` 或 `params` 字典里的情况。
+
+### degradation.py 自包含设计
+
+退化管道从 `features/BSRGAN/utils/utils_blindsr.py` 移植，但移除了对 BSRGAN 内部 `utils_image` 的依赖。所有工具函数（`uint2single`, `single2uint`, `modcrop` 等）在模块内自包含实现。
+
+退化管道支持 3 种模式：
+
+| 模式 | 用途 | 函数 |
 |------|------|------|
-| 4.1 | 编写 `data/blind_sr_dataset.py` 和 `scripts/finetune_realesrnet.py` | 训练代码 |
-| 4.2 | 用 DIV2K HR + BSRGAN 退化生成训练对，微调 RealESRNet | 微调权重 |
-| 4.3 | 对比微调前后效果 | 对比表格 |
+| `bicubic` | 基线退化 | `degradation_bicubic()` |
+| `bsrgan` | BSRGAN 7步随机洗牌 | `degradation_bsrgan()` |
+| `custom` | 消融实验（可控 blur_sigma / noise_level / jpeg_quality） | `degradation_custom()` |
+
+ISP 模型噪声（原始第 6 步）因需要额外预训练模型，当前跳过。
+
+### eval_blind_sr.py 实验分流
+
+脚本通过 `--experiment 1/2/3` 参数分别执行三组实验，避免一次性运行全部导致 OOM 或时间过长：
+
+```bash
+python scripts/eval_blind_sr.py --experiment 1   # 实验1: Bicubic崩溃
+python scripts/eval_blind_sr.py --experiment 2   # 实验2: 退化消融
+python scripts/eval_blind_sr.py --experiment 3   # 实验3: PSNR vs GAN
+```
+
+模型加载采用"缺失即跳过"策略：未下载的预训练模型或未训练的 bicubic SR 模型会打印 `[SKIP]` 后继续，不会中断整个实验。
+
+### 依赖变更
+
+本次构建新增以下依赖：
+
+```
+opencv-python   # cv2，退化管道核心依赖（模糊、JPEG、resize）
+pyiqa           # NIQE/BRISQUE 无参考质量指标（实验3需要）
+```
+
+### .gitignore 变更
+
+新增 `pretrained/*.pth` 规则，防止预训练权重（每个约 67MB）被误提交到 Git。
 
 ---
 

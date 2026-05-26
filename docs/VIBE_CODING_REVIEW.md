@@ -317,6 +317,57 @@ Review: feature/blind-sr
 [依赖管理]     OK — 新增 onnxruntime，已更新 requirements.txt
 ```
 
+### 3.4 Review 实录：Blind SR 构建（2026-05-25）
+
+本次一次性生成 6 个文件（约 800 行代码），以下是 Review 结果：
+
+```
+Review: Blind SR 基础设施 + 退化管道 + 实验脚本
+
+[架构合规]     OK
+  models/rrdbnet.py       → models/ 层 ✓
+  data/degradation.py     → data/ 层 ✓
+  scripts/eval_blind_sr.py, visualize_degradation.py, calc_niqe.py, download_pretrained.py → scripts/ 层 ✓
+  eval_blind_sr.py 调用 models + data，不跨层 ✓
+
+[模块耦合]     OK
+  RRDBNet 通过 models/__init__.py 注册，'rrdb' 和 'rrdbnet' 两个名称均可
+  degradation.py 完全自包含，不依赖 features/BSRGAN/ 的任何模块
+  eval_blind_sr.py 同时使用 build_model() 和 RRDBNet.load_pretrained()
+    → 因为预训练模型有特殊权重映射，合理的例外
+
+[文件粒度]     REVIEW
+  data/degradation.py     ~300 行 — 达到上限，但退化函数高度内聚，暂不拆分
+  scripts/eval_blind_sr.py ~310 行 — 3 个实验函数各 ~80 行 + 工具函数，结构清晰
+  models/rrdbnet.py       ~150 行 — 合理
+  其余脚本均 <150 行 ✓
+
+[重复复用]     WARN
+  eval_blind_sr.py 中的 infer_rrdb() 和 infer_our() 逻辑几乎相同
+    → 未来可统一为 infer(model, lr, device) 一个函数
+  load_hr_images() 和 uint2single 在 eval 和 visualize 中各有调用
+    → 来自 data/degradation.py 的导出，属于正常复用
+
+[变更范围]     OK
+  .gitignore 只新增了 pretrained/*.pth 一行
+  models/__init__.py 只新增了 import 和注册表条目
+  无不相关的修改
+
+[命名语义]     OK
+  函数名用 snake_case: degradation_bsrgan, add_gaussian_noise ✓
+  类名用 PascalCase: DegradationPipeline, RRDBNet ✓
+  BSRGAN 原始命名（add_Gaussian_noise）已修正为 add_gaussian_noise
+
+[错误处理]     OK
+  download_pretrained.py: URLError 捕获 + 手动下载提示 ✓
+  eval_blind_sr.py: 模型/数据缺失时 [SKIP] 不中断 ✓
+  degradation.py: 图像过小时抛出 ValueError ✓
+
+[依赖管理]     ACTION NEEDED
+  新增 opencv-python, pyiqa — 需同步到 pyproject.toml
+  → uv add opencv-python pyiqa
+```
+
 ---
 
 ## 四、Review 维度速查卡片

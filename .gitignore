@@ -30,6 +30,9 @@ experiments/*/infer/
 # ---------- Wandb ----------
 wandb/
 
+# ---------- 预训练权重（体积大，不入仓库） ----------
+pretrained/*.pth
+
 # ---------- 数据集（体积大，不入仓库） ----------
 data/datasets/
 data/DIV2K/
