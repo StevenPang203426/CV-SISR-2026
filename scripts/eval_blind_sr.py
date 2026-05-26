@@ -31,6 +31,18 @@ import sys
 from collections import defaultdict
 
 import numpy as np
+
+
+class _NumpyEncoder(json.JSONEncoder):
+    """让 json.dump 支持 numpy 数值类型。"""
+    def default(self, obj):
+        if isinstance(obj, (np.floating,)):
+            return float(obj)
+        if isinstance(obj, (np.integer,)):
+            return int(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
 import torch
 from PIL import Image
 from skimage.metrics import peak_signal_noise_ratio as calc_psnr
@@ -277,7 +289,7 @@ def run_experiment_1(args):
     # 保存 JSON
     json_path = os.path.join(out_dir, 'results.json')
     with open(json_path, 'w') as f:
-        json.dump(summary, f, indent=2, ensure_ascii=False)
+        json.dump(summary, f, indent=2, ensure_ascii=False, cls=_NumpyEncoder)
     print(f'\n结果已保存: {json_path}')
 
 
@@ -362,7 +374,7 @@ def run_experiment_2(args):
     # 保存
     json_path = os.path.join(out_dir, 'results.json')
     with open(json_path, 'w') as f:
-        json.dump(summary, f, indent=2, ensure_ascii=False)
+        json.dump(summary, f, indent=2, ensure_ascii=False, cls=_NumpyEncoder)
 
     # 画折线图
     try:
