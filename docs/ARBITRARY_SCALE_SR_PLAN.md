@@ -534,7 +534,7 @@ class LIIFDataset(Dataset):
 
 # ---- 模型 ----
 model: liif
-encoder: edsr                  # 第一阶段用 EDSR
+encoder: edsr
 encoder_args:
   n_feats: 64
   n_resblocks: 16
@@ -547,21 +547,22 @@ liif_args:
   cell_decode: true
 
 # ---- 数据 ----
-train_hr: data/datasets/T91
-val_hr: data/datasets/Set5
+train_hr: data/DIV2K_train_HR
+val_hr: data/DIV2K_valid_HR
 patch_size: 48                  # HR patch 大小（LIIF 原文用 48）
 scale_min: 1.0
 scale_max: 4.0
 sample_q: 2304                  # 每张图采样 48×48=2304 个坐标
+val_scale: 4                    # 训练中验证只测 x4
 
 # ---- 训练 ----
-epochs: 1000
+epochs: 500
 batch_size: 16
 lr: 0.0001
 opt: adam
 crit: l1                        # LIIF 用 L1 Loss
-scheduler: step                 # 每 200 epoch 衰减
-step_size: 200
+scheduler: multi_step           # MultiStepLR
+milestones: [200, 400]
 gamma: 0.5
 
 # ---- 输出 ----
@@ -653,48 +654,22 @@ python test_liif.py --ckpt experiments/liif_edsr/best.pt --scale 1.5 --input dem
 
 ---
 
-## 六、两阶段实施计划
+## 六、实施计划
 
-### 阶段 1：EDSR Encoder + LIIF（先跑通）
+### EDSR Encoder + LIIF
 
 | # | 任务 | 预计时间 | 产出 |
 |---|------|----------|------|
-| 1.1 | 在 `edsr.py` 中新增 `EDSREncoder` 类 | 10 min | 修改后的 edsr.py |
-| 1.2 | 编写 `models/liif.py`（LIIF 解码器 + MLP） | 1 小时 | 核心解码器 |
-| 1.3 | 编写 `models/liif_model.py`（Encoder + LIIF 组合） | 20 min | 完整模型 |
-| 1.4 | 编写 `data/dataset_liif.py`（随机倍率 + 坐标采样） | 1 小时 | LIIF 数据集 |
-| 1.5 | 编写 `train_liif.py` | 1 小时 | 训练入口 |
-| 1.6 | 编写 `configs/liif_edsr_x1-4.yaml` | 10 min | 训练配置 |
-| 1.7 | 训练 + 调试 | 数小时 | `experiments/liif_edsr/best.pt` |
-| 1.8 | 编写 `test_liif.py`，在 x2/x3/x4 上评估 PSNR | 30 min | 测试入口 |
-| 1.9 | 验证任意倍率推理（x3.14, x5.5 等） | 30 min | 演示结果 |
+| 1 | 在 `edsr.py` 中新增 `EDSREncoder` 类 | 10 min | 修改后的 edsr.py |
+| 2 | 编写 `models/liif.py`（LIIF 解码器 + MLP） | 1 小时 | 核心解码器 |
+| 3 | 编写 `models/liif_model.py`（Encoder + LIIF 组合 + 工厂函数） | 20 min | 完整模型 |
+| 4 | 编写 `data/dataset_liif.py`（随机倍率 + 坐标采样） | 1 小时 | LIIF 数据集 |
+| 5 | 编写 `train_liif.py`（独立训练入口） | 1 小时 | 训练入口 |
+| 6 | 编写 `configs/liif_edsr_x1-4.yaml` | 10 min | 训练配置 |
+| 7 | 在云服务器上训练（DIV2K, 500 epoch, ~5-8h） | 5-8 小时 | `experiments/liif_edsr/best.pt` |
+| 8 | 编写 `test_liif.py`，在 x2/x4/x6/x1.5/x3.5 上评估 | 30 min | 测试入口 |
 
-### 阶段 2：轻量 Encoder 替换（跑通后优化）
-
-| # | 任务 | 说明 |
-|---|------|------|
-| 2.1 | 从 ESPCN 中拆出 `ESPCNEncoder`（去掉 PixelShuffle 头） | 只保留 2 层 Conv，输出通道 32 |
-| 2.2 | 修改 `liif_model.py` 支持不同 Encoder | 通过 config 切换 |
-| 2.3 | 编写 `configs/liif_espcn_x1-4.yaml` | `feat_dim: 32` |
-| 2.4 | 训练 + 对比 | PSNR 对比 EDSR 版本 |
-
-**ESPCN Encoder 的结构**：
-
-```python
-class ESPCNEncoder(nn.Module):
-    """ESPCN 去掉 PixelShuffle 后的特征提取部分。"""
-    def __init__(self, in_channels=3, mid_channels=64, out_channels=32):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Conv2d(in_channels, mid_channels, 5, padding=2),
-            nn.Tanh(),
-            nn.Conv2d(mid_channels, out_channels, 3, padding=1),
-            nn.Tanh(),
-        )
-    
-    def forward(self, x):
-        return self.net(x)   # (B, 32, H, W)，和 LR 同分辨率
-```
+> **阶段 2（轻量 Encoder 替换）暂不实施**，待阶段 1 跑通后再决定。
 
 ---
 
@@ -718,16 +693,16 @@ LIIF 使用 **[-1, 1] 归一化坐标**，和 PyTorch 的 `grid_sample` 一致�
 
 LIIF 训练时**不对整张 HR 图做推理**（太大了），而是随机采样 `sample_q` 个坐标点。LIIF 原文用 `sample_q = 2304`（= 48×48），即每张图只查 2304 个点。这让 batch_size 可以设得较大（16 或 32）。
 
-验证时需要查全部像素，所以要分块或用较小的验证图。
+验证时需要查全部像素，采用**分块查询**策略：把坐标分成若干 batch（默认每次 30000 个点），循环推理后拼接。这对 DIV2K 验证集（100 张 2K 图）尤为重要——x4 放大后单张图的坐标数可达 800 万。
 
 ### 7.3 与现有项目的兼容性
 
 | 组件 | 影响 |
 |------|------|
-| `models/__init__.py` | 需要注册 `liif` 模型（但 `build_model` 签名不同，建议 LIIF 单独用 `build_liif_model()` 工厂函数） |
-| `core/trainer.py` | **不复用**。LIIF 训练循环逻辑不同，单独写 `train_liif.py` |
-| `core/evaluator.py` | 需新增 `evaluate_liif()` 函数，查询坐标网格后计算 PSNR |
+| `models/__init__.py` | **不修改**。LIIF 不进 REGISTRY，使用独立的 `build_liif_model()` 工厂函数 |
+| `core/trainer.py` | **不复用、不修改**。LIIF 训练循环逻辑不同，独立写 `train_liif.py` |
 | `data/dataset.py` | **不影响**。LIIF 用独立的 `dataset_liif.py` |
+| `models/edsr.py` | 新增 `EDSREncoder` 类，现有 `EDSR` 类零改动 |
 | 现有 5 个模型 | **完全不受影响**。LIIF 是新增功能 |
 
 ### 7.4 预期性能参考
@@ -746,7 +721,28 @@ LIIF 原文在 DIV2K 训练、Set5 测试的 PSNR（EDSR-baseline Encoder）：
 
 ---
 
-## 八、参考资源
+## 八、设计决策记录
+
+> 以下决策通过逐项讨论确定（2026-05-26）。
+
+| # | 决策点 | 结论 | 理由 |
+|---|--------|------|------|
+| 1 | EDSREncoder 设计 | 独立类，复用 ResBlock，不继承 EDSR | EDSR 零改动，已有 checkpoint 不受影响 |
+| 2 | 训练脚本 | 独立 `train_liif.py`，不复用 core/Trainer | 训练循环差异太大（坐标查询 vs 像素对像素），硬塞进 Trainer 有回归风险 |
+| 3 | 模型注册 | 不进 REGISTRY，用 `build_liif_model()` | LIIF 构建需两步（Encoder + Decoder），和现有单类工厂模式不兼容 |
+| 4 | 训练数据 | DIV2K（800 张） | T91 只有 91 张，对 5 层 256 维 MLP 来说数据量不足 |
+| 5 | GPU / 训练时长 | 32G 显存，5-8 小时 | 单卡 32G 跑 500 epoch 约 4-6 小时 |
+| 6 | 阶段范围 | 只做 EDSR Encoder | ESPCN 轻量替换待阶段 1 跑通后再决定 |
+| 7 | ONNX / Web 部署 | 不纳入本次 | grid_sample / 动态 coord 对 ONNX 不友好，先跑通训练 |
+| 8 | 验证集 | DIV2K 验证集（100 张），分块查询防 OOM | 比 Set5（5 张）更有统计意义 |
+| 9 | 训练中验证倍率 | 只测 x4 | 控制每 epoch 验证时间 |
+| 10 | 训练后测试倍率 | x2、x4、x6 + x1.5、x3.5 | 整数 + 分数倍率完整展示 LIIF 能力 |
+| 11 | MLP 规格 | 5 层 256 维（沿用原文） | 经过充分验证的配置，改动收益不明确 |
+| 12 | 学习率调度 | MultiStepLR，milestone [200, 400]，gamma=0.5 | 和 LIIF 原文一致，减少不确定性 |
+
+---
+
+## 九、参考资源
 
 | 资源 | 链接 | 用途 |
 |------|------|------|

@@ -1,0 +1,39 @@
+# LIIF + EDSR Encoder 训练配置
+# 任意尺度超分辨率 (x1 ~ x4)
+
+# ---- 模型 ----
+model: liif
+encoder: edsr
+encoder_args:
+  n_feats: 64
+  n_resblocks: 16
+
+liif_args:
+  feat_dim: 64
+  hidden_dim: 256
+  local_ensemble: true
+  feat_unfold: true
+  cell_decode: true
+
+# ---- 数据 ----
+train_hr: data/DIV2K/DIV2K_train_HR
+val_hr: data/DIV2K/DIV2K_valid_HR
+patch_size: 48
+scale_min: 1.0
+scale_max: 4.0
+sample_q: 2304                  # 48×48 = 2304 个采样坐标
+val_scale: 4                    # 训练中验证只测 x4
+val_batch_q: 30000              # 验证分块查询大小
+
+# ---- 训练 ----
+epochs: 500
+batch_size: 16
+lr: 0.0001
+opt: adam
+crit: l1
+scheduler: multi_step
+milestones: [200, 400]
+gamma: 0.5
+
+# ---- 输出 ----
+save_dir: experiments/liif_edsr
