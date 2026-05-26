@@ -114,18 +114,22 @@ class LIIFDataset(Dataset):
             # 随机采样倍率
             scale = random.uniform(self.scale_min, self.scale_max)
 
+            # 关键：固定 LR 尺寸，反算 HR patch 大小
+            # 这样不同倍率下 LR 尺寸一致，DataLoader 可以 stack
+            lr_size = self.patch_size   # LR 固定为 patch_size × patch_size
+            hr_size = round(lr_size * scale)  # HR 随倍率变化
+
             w, h = hr.size
-            ps = self.patch_size
 
             # 确保图片够大
-            if w < ps or h < ps:
-                hr = hr.resize((max(ps, w), max(ps, h)), Image.BICUBIC)
+            if w < hr_size or h < hr_size:
+                hr = hr.resize((max(hr_size, w), max(hr_size, h)), Image.BICUBIC)
                 w, h = hr.size
 
             # 随机裁剪 HR patch
-            x = random.randint(0, w - ps)
-            y = random.randint(0, h - ps)
-            hr = hr.crop((x, y, x + ps, y + ps))
+            x = random.randint(0, w - hr_size)
+            y = random.randint(0, h - hr_size)
+            hr = hr.crop((x, y, x + hr_size, y + hr_size))
 
             # 数据增强
             if self.augment:
@@ -137,13 +141,8 @@ class LIIFDataset(Dataset):
                 if rotation:
                     hr = hr.rotate(rotation, expand=True)
 
-            # 生成 LR（bicubic 下采样）
-            hr_h, hr_w = hr.size[1], hr.size[0]
-            lr_h = round(hr_h / scale)
-            lr_w = round(hr_w / scale)
-            # 确保 LR 至少 1×1
-            lr_h, lr_w = max(1, lr_h), max(1, lr_w)
-            lr = hr.resize((lr_w, lr_h), Image.BICUBIC)
+            # 生成 LR（bicubic 下采样到固定尺寸）
+            lr = hr.resize((lr_size, lr_size), Image.BICUBIC)
 
         else:
             # 验证时用固定倍率
