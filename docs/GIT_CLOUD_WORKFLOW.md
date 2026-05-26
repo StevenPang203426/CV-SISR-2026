@@ -679,79 +679,65 @@ git push origin --delete feature/blind-sr   # 删远程
 
 | 症状 | 原因 |
 |------|------|
-| 本地能跑，云服务器报 `ModuleNotFoundError` | 本地新装了库，没同步 requirements.txt |
+| 本地能跑，云服务器报 `ModuleNotFoundError` | 本地新装了库，没同步 pyproject.toml |
 | 云服务器跑出的结果和本地不一样 | PyTorch / CUDA 版本不一致 |
-| `pip install -r requirements.txt` 报冲突 | requirements.txt 里写了固定版本但云服务器上 CUDA 版本不同 |
+| `uv sync` 报冲突 | pyproject.toml 里的版本约束和云服务器上 CUDA 版本不兼容 |
 
 ### 8.2 环境同步流程
 
+本项目使用 **uv** 管理依赖（依赖声明在 `pyproject.toml` 中，而非 requirements.txt）。
+
+#### 8.2.1 永久配置清华源镜像（每台机器只需一次）
+
 ```bash
-# ═══ 本地：每次安装新库后，立即更新 requirements.txt ═══
+uv pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+```
 
-# 方式一（推荐）：手动添加你实际新装的库
-# 比如你装了 onnxruntime：
-echo "onnxruntime>=1.17.0" >> requirements.txt
-git add requirements.txt
-git commit -m "deps: add onnxruntime for ONNX verification"
+配置后所有 `uv add` / `uv pip install` 命令都会自动走清华源，无需每次手动指定 `--default-index`。
 
-# 方式二：全量导出（注意会包含所有间接依赖，很长）
-pip freeze > requirements.txt
+#### 8.2.2 日常依赖管理
+
+```bash
+# ═══ 安装新依赖 ═══
+
+# uv add 会自动更新 pyproject.toml 和 uv.lock
+uv add opencv-python-headless
+uv add pyiqa
+
+# 提交依赖变更
+git add pyproject.toml uv.lock
+git commit -m "deps: add opencv-python-headless for degradation pipeline"
 ```
 
 ```bash
-# ═══ 云服务器：每次 pull 后检查依赖变更 ═══
+# ═══ 云服务器：每次 pull 后同步依赖 ═══
 
 git pull origin feature/blind-sr
 
-# 检查 requirements.txt 是否有变更
-git diff HEAD~1 -- requirements.txt
+# 检查依赖是否有变更
+git diff HEAD~1 -- pyproject.toml
 
-# 如果有变更，安装新依赖
-pip install -r requirements.txt
+# 如果有变更，同步安装
+uv sync
 ```
 
-### 8.3 推荐的 requirements.txt 管理策略
+### 8.3 pyproject.toml vs requirements.txt
 
-不要用 `pip freeze` 生成完整列表（上百行、包含 CUDA 驱动版本、不可移植）。
-改为维护一个**精简的主依赖列表**：
+本项目用 `pyproject.toml` 声明依赖，`uv.lock` 锁定精确版本。不再需要手动维护 requirements.txt。
 
-```bash
-# requirements.txt —— 只列主依赖，让 pip 自动解析子依赖
-torch>=2.0.0
-torchvision>=0.15.0
-Pillow>=9.0.0
-numpy>=1.24.0
-scikit-image>=0.20.0
-matplotlib>=3.7.0
-scipy>=1.10.0
-opencv-python>=4.7.0
-pyyaml>=6.0
-tqdm>=4.65.0
-wandb>=0.15.0
-thop>=0.1.0
+| | requirements.txt + pip | pyproject.toml + uv |
+|--|--|--|
+| 添加依赖 | 手动编辑文件 | `uv add xxx` 自动写入 |
+| 版本锁定 | `pip freeze` 手动导出 | `uv.lock` 自动生成 |
+| 安装依赖 | `pip install -r requirements.txt` | `uv sync` |
+| CUDA 隔离 | 需手动排除 nvidia-* | pyproject.toml 只列主依赖，PyTorch/CUDA 单独装 |
 
-# Web SR 工具相关
-onnxruntime>=1.17.0
-
-# Blind SR 实验相关（按需安装）
-# lpips>=0.1.4
-# pyiqa>=0.1.7
-```
-
-> **Tips：精简列表 vs 全量锁定**
->
-> 精简列表（只写主依赖 + 最低版本）适合你的场景：单人项目、本地和云服务器 CUDA 版本可能不同。
-> 全量锁定（`pip freeze`）适合多人协作、生产环境部署，要求所有人用完全相同的版本。
->
-> 如果需要精确锁定，可以额外维护一个 `requirements-lock.txt`：
-> ```bash
-> pip freeze > requirements-lock.txt  # 全量锁定，仅供参考
-> ```
+> **注意**：如果项目根目录仍存在旧的 `requirements.txt`，它仅作为参考，实际以 `pyproject.toml` 为准。
 
 ### 8.4 CUDA / PyTorch 版本不一致怎么办
 
 本地和云服务器的 CUDA 版本经常不一样（比如本地 CUDA 12.4、云服务器 CUDA 11.8）。
-核心原则：**requirements.txt 里不要写 CUDA 相关的包**（`nvidia-*`、`cuda-*`、`triton`）。
+核心原则：**pyproject.toml 里不要写 CUDA 相关的包**（`nvidia-*`、`cuda-*`、`triton`）。
 
 ```bash
 # 云服务器上单独安装 PyTorch（根据 CUDA 版本选）
@@ -760,12 +746,12 @@ nvidia-smi
 
 # 根据 CUDA 版本安装对应的 PyTorch
 # CUDA 11.8:
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 # CUDA 12.1:
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 
-# 然后再装其他依赖
-pip install -r requirements.txt
+# 然后同步其他依赖
+uv sync
 ```
 
 ---
@@ -787,7 +773,7 @@ pip install -r requirements.txt
     [ ] .gitignore 是否覆盖了不该提交的文件（checkpoints、数据集、__pycache__）
 
 [ ] 环境检查
-    [ ] 新装了 pip 包？→ 更新 requirements.txt 并一起 commit
+    [ ] 新装了依赖？→ uv add xxx，提交 pyproject.toml 和 uv.lock
     [ ] 改了配置文件格式？→ 确认云服务器上的脚本还兼容
 
 [ ] 数据检查
@@ -803,8 +789,8 @@ pip install -r requirements.txt
     [ ] git log --oneline -3 — 确认和本地 push 的一致
 
 [ ] 环境检查
-    [ ] git diff HEAD~1 -- requirements.txt — 检查依赖是否有变更
-    [ ] 有变更 → pip install -r requirements.txt
+    [ ] git diff HEAD~1 -- pyproject.toml — 检查依赖是否有变更
+    [ ] 有变更 → uv sync
     [ ] python -c "import torch; print(torch.__version__, torch.cuda.is_available())" — CUDA 正常
 
 [ ] 运行检查

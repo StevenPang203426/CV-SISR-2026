@@ -144,9 +144,15 @@ class RRDBNet(nn.Module):
         mapped = {}
         for k, v in state.items():
             new_k = k
+            # --- 主干网络 ---
             new_k = new_k.replace('RRDB_trunk.', 'body.')
+            # --- 尾部卷积（不同权重文件有不同命名风格）---
+            new_k = new_k.replace('conv_body.', 'trunk_conv.')
+            new_k = new_k.replace('conv_up1.', 'upconv1.')
+            new_k = new_k.replace('conv_up2.', 'upconv2.')
+            new_k = new_k.replace('conv_hr.', 'hr_conv.')
             new_k = new_k.replace('HRconv.', 'hr_conv.')
-            # RDB1/RDB2/RDB3 → rdb1/rdb2/rdb3
+            # --- Dense Block ---
             new_k = new_k.replace('.RDB1.', '.rdb1.')
             new_k = new_k.replace('.RDB2.', '.rdb2.')
             new_k = new_k.replace('.RDB3.', '.rdb3.')
