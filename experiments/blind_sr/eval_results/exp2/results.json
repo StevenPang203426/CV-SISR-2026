@@ -1,0 +1,26 @@
+{
+  "D0: Bicubic": {
+    "EDSR_x4": 24.09,
+    "RealESRGAN": 24.07
+  },
+  "D1: +Blur": {
+    "EDSR_x4": 28.85,
+    "RealESRGAN": 24.94
+  },
+  "D2: +Noise": {
+    "EDSR_x4": 19.78,
+    "RealESRGAN": 23.75
+  },
+  "D3: +JPEG": {
+    "EDSR_x4": 22.62,
+    "RealESRGAN": 23.16
+  },
+  "D4: Blur+Noise": {
+    "EDSR_x4": 21.14,
+    "RealESRGAN": 24.24
+  },
+  "D5: Blur+Noise+JPEG": {
+    "EDSR_x4": 23.42,
+    "RealESRGAN": 23.37
+  }
+}
