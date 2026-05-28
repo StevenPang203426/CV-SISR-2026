@@ -131,7 +131,7 @@ class RRDBNet(nn.Module):
 
     def load_pretrained(self, path, strict=True):
         """加载预训练权重，自动处理 key 名称差异。"""
-        state = torch.load(path, map_location='cpu')
+        state = torch.load(path, map_location='cpu', weights_only=False)
 
         # 有些权重文件是直接的 state_dict，有些包在 dict 里
         if isinstance(state, dict) and 'params_ema' in state:

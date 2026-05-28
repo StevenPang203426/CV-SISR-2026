@@ -266,7 +266,7 @@ def main():
     ).to(device)
 
     # 加载权重（兼容 core/checkpoint 的 'model' key）
-    ckpt = torch.load(args.ckpt, map_location=device)
+    ckpt = torch.load(args.ckpt, map_location=device, weights_only=False)
     if isinstance(ckpt, dict) and 'model' in ckpt:
         state_dict = ckpt['model']
     elif isinstance(ckpt, dict) and 'model_state_dict' in ckpt:
