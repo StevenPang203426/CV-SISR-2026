@@ -47,6 +47,6 @@ def load_checkpoint(model: nn.Module, path: str, device='cpu'):
     dict
         完整的检查点字典（包含 'model' 键和其他元数据）。
     """
-    state = torch.load(path, map_location=device)
+    state = torch.load(path, map_location=device, weights_only=False)
     model.load_state_dict(state['model'])
     return state
