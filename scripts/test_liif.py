@@ -7,16 +7,16 @@ LIIF 测试入口 — 任意倍率超分辨率
 用法::
 
     # 单张图任意倍率推理
-    python test_liif.py --ckpt experiments/liif_edsr/best.pt --scale 3.5 \\
+    python scripts/test_liif.py --ckpt experiments/liif_edsr/best.pt --scale 3.5 \
                         --input demo/original/10.png --output results/
 
     # 在目录上评估 PSNR（需要 HR ground truth）
-    python test_liif.py --ckpt experiments/liif_edsr/best.pt --scale 4 \\
+    python scripts/test_liif.py --ckpt experiments/liif_edsr/best.pt --scale 4 \
                         --test_dir data/DIV2K_valid_HR --output results/
 
     # 多倍率批量评估
-    python test_liif.py --ckpt experiments/liif_edsr/best.pt \\
-                        --scales 2 4 6 1.5 3.5 \\
+    python scripts/test_liif.py --ckpt experiments/liif_edsr/best.pt \
+                        --scales 2 4 6 1.5 3.5 \
                         --test_dir data/DIV2K_valid_HR --output results/
 """
 
@@ -25,6 +25,10 @@ import json
 import os
 import sys
 import time
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
 import numpy as np
 import torch
