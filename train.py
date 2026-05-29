@@ -70,7 +70,9 @@ def main():
     val_loader = DataLoader(val_set, batch_size=1, shuffle=False, num_workers=1)
 
     # 模型（通过统一注册表构建）
-    model = build_model(args.model, scale=args.scale, in_channels=3).to(device)
+    extra_model_args = getattr(args, 'model_args', {}) or {}
+    model = build_model(args.model, scale=args.scale, in_channels=3,
+                        **extra_model_args).to(device)
 
     # 优化器 & 损失 & 调度器
     optimizer = _build_optimizer(model, args)

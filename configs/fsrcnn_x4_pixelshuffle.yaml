@@ -1,0 +1,15 @@
+model: fsrcnn
+scale: 4
+train:
+  train_dir: data/DIV2K/DIV2K_train_HR
+  val_dir: data/DIV2K/DIV2K_valid_HR
+  project_name: FSRCNN_X4_PixelShuffle
+  epochs: 500
+  batch_size: 16
+  patch_size: 96
+  lr: 1e-4
+  opt: Adam
+  crit: MSE
+  save_dir: experiments/fsrcnn_x4_pixelshuffle
+  model_args:
+    upsample_mode: pixelshuffle
