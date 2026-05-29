@@ -101,10 +101,10 @@ for each training step:
 ```
 SISR-Team8/
 ├── models/
-│   ├── __init__.py            ← 更新：注册 LIIF
-│   ├── edsr.py                ← 修改：拆出 EDSREncoder
+│   ├── __init__.py            ← 不修改（LIIF 不进 REGISTRY）
+│   ├── edsr.py                ← 修改：新增 EDSREncoder 类
 │   ├── liif.py                ← 新增：LIIF 解码器 + MLP
-│   ├── liif_model.py          ← 新增：Encoder + LIIF 组合模型
+│   ├── liif_model.py          ← 新增：Encoder + LIIF 组合模型 + build_liif_model()
 │   └── ...
 │
 ├── data/
@@ -112,15 +112,12 @@ SISR-Team8/
 │   └── dataset_liif.py        ← 新增：随机倍率 + 坐标采样的 Dataset
 │
 ├── configs/
-│   ├── liif_edsr_x1-4.yaml    ← 新增：LIIF 训练配置
-│   └── liif_espcn_x1-4.yaml   ← 新增：轻量版 LIIF 配置
-│
-├── train_liif.py               ← 新增：LIIF 训练入口
-├── test_liif.py                ← 新增：LIIF 测试入口（指定任意倍率）
+│   └── liif_edsr_x1-4.yaml    ← 新增：LIIF 训练配置
 │
 └── scripts/
-    ├── train_liif.sh           ← 新增
-    └── test_liif.sh            ← 新增
+    ├── train_liif.py           ← 新增：LIIF 训练入口（独立脚本）
+    ├── test_liif.py            ← 新增：LIIF 测试入口（任意倍率推理 + 多倍率评估）
+    └── visualize_liif.py       ← 新增：多倍率对比可视化面板
 ```
 
 ### 3.2 为什么单独写 `train_liif.py` 而不复用 `train.py`
@@ -643,13 +640,24 @@ def test_arbitrary_scale(model, lr_image, scale):
 **用法示例**：
 
 ```bash
-# 固定倍率测试（对比现有模型）
-python test_liif.py --ckpt experiments/liif_edsr/best.pt --scale 4 --test_dir demo/original
+# 训练
+python scripts/train_liif.py --config configs/liif_edsr_x1-4.yaml
 
-# 任意倍率测试（这是 LIIF 的独特能力）
-python test_liif.py --ckpt experiments/liif_edsr/best.pt --scale 3.14 --input demo/original/10.png
-python test_liif.py --ckpt experiments/liif_edsr/best.pt --scale 5.5 --input demo/original/10.png
-python test_liif.py --ckpt experiments/liif_edsr/best.pt --scale 1.5 --input demo/original/10.png
+# 固定倍率测试（对比现有模型）
+python scripts/test_liif.py --ckpt experiments/liif_edsr/best.pt --scale 4 \
+    --test_dir data/DIV2K/DIV2K_valid_HR
+
+# 任意倍率测试（LIIF 的独特能力）
+python scripts/test_liif.py --ckpt experiments/liif_edsr/best.pt --scale 3.14 \
+    --input demo/original/10.png
+
+# 多倍率批量评估
+python scripts/test_liif.py --ckpt experiments/liif_edsr/best.pt \
+    --scales 1.5 2 3.5 4 6 --test_dir data/DIV2K/DIV2K_valid_HR --save_images
+
+# 多倍率对比可视化面板（HR | Bicubic | LIIF 并排对比）
+python scripts/visualize_liif.py --ckpt experiments/liif_edsr/best.pt \
+    --input demo/original/10.png --scales 1.5 2 3.5 4 6
 ```
 
 ---
@@ -742,7 +750,31 @@ LIIF 原文在 DIV2K 训练、Set5 测试的 PSNR（EDSR-baseline Encoder）：
 
 ---
 
-## 九、参考资源
+## 九、实施进度
+
+> 最后更新：2026-05-29
+
+| # | 任务 | 状态 | 备注 |
+|---|------|------|------|
+| 1 | EDSREncoder 类 | 已完成 | `models/edsr.py` 中新增独立类 |
+| 2 | LIIF 解码器 | 已完成 | `models/liif.py`，5 层 256 维 MLP |
+| 3 | LIIFModel 组合 | 已完成 | `models/liif_model.py` + `build_liif_model()` |
+| 4 | LIIF Dataset | 已完成 | `data/dataset_liif.py`，固定 LR 尺寸训练策略 |
+| 5 | 训练入口 | 已完成 | `scripts/train_liif.py`，独立脚本 |
+| 6 | 训练配置 | 已完成 | `configs/liif_edsr_x1-4.yaml` |
+| 7 | 测试入口 | 已完成 | `scripts/test_liif.py`，支持 `--scales` 多倍率 |
+| 8 | 可视化脚本 | 已完成 | `scripts/visualize_liif.py`，多倍率对比面板 |
+| 9 | 云端训练 | 待执行 | 需在 GPU 服务器上运行 |
+
+### 关键修复记录
+
+- **DataLoader collate 错误**：随机倍率导致不同样本 LR 尺寸不同，无法 stack。修复：LR 固定为 `patch_size`，HR 计算为 `round(patch_size × scale)`。
+- **PyTorch 2.6 weights_only 错误**：默认改为 `True`，checkpoint 含 numpy 类型时报错。修复：`torch.load(..., weights_only=False)`，影响 `test_liif.py`、`core/checkpoint.py`、`models/rrdbnet.py`。
+- **脚本路径迁移**：`train_liif.py` 和 `test_liif.py` 从项目根目录移至 `scripts/`，添加 ROOT sys.path 处理。
+
+---
+
+## 十、参考资源
 
 | 资源 | 链接 | 用途 |
 |------|------|------|

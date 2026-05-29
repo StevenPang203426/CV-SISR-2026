@@ -22,7 +22,7 @@ PyTorch 训练 → ONNX 导出 → 模型文件 (.onnx)
 
 项目分为三层：
 
-- **训练层**：PyTorch 2.11，支持 5 种经典模型（SRCNN / FSRCNN / ESPCN / EDSR / IMDN），YAML 配置驱动，WandB 实验追踪
+- **训练层**：PyTorch 2.11，支持 5 种经典固定倍率模型（SRCNN / FSRCNN / ESPCN / EDSR / IMDN）+ LIIF 任意倍率模型，YAML 配置驱动，WandB 实验追踪
 - **导出层**：PyTorch → ONNX 自动导出，处理了 ConvTranspose2d 算子兼容性、PyTorch Dynamo 导出器适配等实际工程问题
 - **部署层**：单文件 HTML 前端，ONNX Runtime Web 推理，支持 WASM 和 WebGPU 后端，零服务器依赖
 
@@ -55,14 +55,18 @@ PyTorch 训练 → ONNX 导出 → 模型文件 (.onnx)
 - 解决 FSRCNN 的 ConvTranspose2d 在 WASM 后端不支持的问题：设计了双模式架构 + 权重转换方案
 - 前端使用 ONNX Runtime Web，实现 HWC↔CHW 张量转换、模型缓存、WebGPU 自动检测
 
-**3. Blind SR 实验方案设计**
+**3. 任意尺度超分辨率（LIIF）**
+
+引入 LIIF（Local Implicit Image Function）实现任意倍率超分辨率：单一模型覆盖 x1.5、x2、x3.14、x4、x6 等任意正实数倍率。采用 EDSREncoder 提取特征 + 5 层 MLP 对连续坐标查询 RGB，训练时随机采样 [1, 4] 倍率。独立的训练/测试/可视化脚本，分块查询防 OOM。
+
+**4. Blind SR 实验方案设计**
 
 针对真实世界退化（非理想双三次下采样）的超分方向，设计了基于 RealESRGAN / BSRGAN 的对比实验方案，包括退化管道分析、PSNR 训练 vs GAN 训练的感知质量对比等。
 
-**4. 工程规范建设**
+**5. 工程规范建设**
 
 - Git 多机协作工作流（本地 ↔ GitHub ↔ 云服务器双向同步）
-- 环境同步策略（精简 requirements.txt + CUDA 版本隔离）
+- 环境同步策略（uv 包管理 + 清华源镜像 + CUDA 版本隔离）
 - Vibe Coding Review 指南（8 维度代码审查 + 跨平台部署踩坑案例）
 
 ---
@@ -73,7 +77,7 @@ PyTorch 训练 → ONNX 导出 → 模型文件 (.onnx)
 |------|------|
 | 深度学习 | PyTorch 2.11, TorchVision, CUDA |
 | 模型部署 | ONNX, ONNX Runtime Web (WASM/WebGPU) |
-| 包管理 | uv (清华源镜像) |
+| 包管理 | uv (清华源镜像), pyproject.toml |
 | 实验管理 | WandB, YAML 配置 |
 | 前端 | 原生 HTML/CSS/JS, ONNX Runtime Web CDN |
 | 工程工具 | Git, shell scripts, Python AST 检查 |
@@ -88,6 +92,7 @@ PyTorch 训练 → ONNX 导出 → 模型文件 (.onnx)
 - 模型规模：ESPCN 约 25KB (ONNX)，EDSR 约 5.8MB
 - 训练数据：DIV2K（800 张 2K 分辨率图像）
 - 最佳 PSNR (x4)：EDSR 28.56 dB，SRCNN 27.67 dB，ESPCN 27.48 dB
+- LIIF 支持任意倍率（x1~x6+），单模型覆盖所有尺度
 - 浏览器推理延迟：512×512 输入约 200-500ms (WASM)
 
 ---
@@ -100,7 +105,7 @@ ONNX 是跨平台标准格式，ORT Web 可以跑在浏览器里（WASM/WebGPU�
 
 **Q: ConvTranspose2d 不兼容是怎么解决的？**
 
-FSRCNN 用 ConvTranspose2d 做上采样，但 ORT Web WASM 不支持这个算子。我的方案是给模型加了 `upsample_mode` 参数，训练时用 deconv（不改动训练流程），导出时切换为 Conv2d + PixelShuffle（数学等价，WASM 兼容），并写了权重转换脚本实现无损切换。
+FSRCNN 用 ConvTranspose2d 做上采样，但 ORT Web WASM 不支持这个算子。我的方案是给模型加了 `upsample_mode` 参数，支持 `'deconv'` 和 `'pixelshuffle'` 两种模式。最初尝试权重转换脚本（deconv→pixelshuffle），但发现转换是有损的（sub-pixel 位置映射不精确导致色偏）。最终方案：直接用 `upsample_mode='pixelshuffle'` 从头训练（`configs/fsrcnn_x4_pixelshuffle.yaml`），训练完直接 ONNX 导出，无需任何权重转换。
 
 **Q: 项目中遇到的最大工程挑战是什么？**
 
