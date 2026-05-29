@@ -443,8 +443,8 @@ def run_experiment_3(args):
 
     # 测试图像：RealSRSet（真实退化，无 GT）
     test_dirs = [
-        os.path.join(ROOT, 'features/BSRGAN/testsets/RealSRSet'),
-        os.path.join(ROOT, 'testsets/RealSRSet'),
+        os.path.join(ROOT, 'data/RealSRSet'),
+        os.path.join(ROOT, 'features/BSRGAN/testsets/RealSRSet'),  # 旧路径兼容
     ]
     test_dir = None
     for td in test_dirs:
@@ -454,7 +454,7 @@ def run_experiment_3(args):
 
     if test_dir is None:
         print('[ERROR] 找不到 RealSRSet 测试集')
-        print('请确保 features/BSRGAN/testsets/RealSRSet/ 存在')
+        print('请确保 data/RealSRSet/ 存在')
         return
 
     images = load_hr_images(test_dir, max_images=20)
