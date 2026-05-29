@@ -13,10 +13,10 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from core.config import load_config
-from core.trainer import Trainer
-from data.dataset import SRDataset
-from models import build_model
+from src.fixed_sr.config import load_config
+from src.fixed_sr.trainer import Trainer
+from src.fixed_sr.dataset import SRDataset
+from src.fixed_sr.models import build_model
 
 
 def _build_optimizer(model, args):

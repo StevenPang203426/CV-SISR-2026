@@ -14,9 +14,9 @@
 import argparse
 import torch
 
-from models import build_model, REGISTRY
-from core.checkpoint import load_checkpoint
-from core.inferencer import Inferencer
+from src.fixed_sr.models import build_model, REGISTRY
+from src.common.checkpoint import load_checkpoint
+from src.fixed_sr.inferencer import Inferencer
 
 
 def main():

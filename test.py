@@ -18,10 +18,10 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from data.dataset import SRDataset
-from models import build_model, REGISTRY
-from core.checkpoint import load_checkpoint
-from core.evaluator import Evaluator
+from src.fixed_sr.dataset import SRDataset
+from src.fixed_sr.models import build_model, REGISTRY
+from src.common.checkpoint import load_checkpoint
+from src.fixed_sr.evaluator import Evaluator
 
 
 def main():
