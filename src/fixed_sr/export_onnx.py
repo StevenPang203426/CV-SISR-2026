@@ -94,9 +94,17 @@ def export_one(model_name: str, scale: int, ckpt_path: str, output_path: str,
 
     model = build_model(model_name, scale=scale, in_channels=3, **extra_kwargs)
 
-    # FSRCNN pixelshuffle: 需要从 deconv checkpoint 转换权重
+    # FSRCNN: 判断 checkpoint 是否已经是 pixelshuffle 格式
     if model_name == 'fsrcnn':
-        _load_fsrcnn_pixelshuffle(model, ckpt_path, scale)
+        ckpt = torch.load(ckpt_path, map_location='cpu')
+        state = ckpt.get('model', ckpt) if isinstance(ckpt, dict) and 'model' in ckpt else ckpt
+        if 'upsample.0.weight' in state:
+            # checkpoint 本身就是 pixelshuffle 格式，直接加载
+            load_checkpoint(model, ckpt_path, device='cpu')
+            print(f'[INFO] Loaded pixelshuffle checkpoint directly')
+        else:
+            # deconv checkpoint → 转换为 pixelshuffle 权重
+            _load_fsrcnn_pixelshuffle(model, ckpt_path, scale)
     else:
         load_checkpoint(model, ckpt_path, device='cpu')
 
