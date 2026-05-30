@@ -23,8 +23,8 @@ PyTorch 训练 → ONNX 导出 → 模型文件 (.onnx)
 项目分为三层：
 
 - **训练层**：PyTorch 2.11，支持 5 种经典固定倍率模型（SRCNN / FSRCNN / ESPCN / EDSR / IMDN）+ LIIF 任意倍率模型，YAML 配置驱动，WandB 实验追踪
-- **导出层**：PyTorch → ONNX 自动导出，处理了 ConvTranspose2d 算子兼容性、PyTorch Dynamo 导出器适配等实际工程问题
-- **部署层**：单文件 HTML 前端，ONNX Runtime Web 推理，支持 WASM 和 WebGPU 后端，零服务器依赖
+- **导出层**：PyTorch → ONNX 自动导出，处理了 ConvTranspose2d 算子兼容性、PyTorch Dynamo 导出器适配等实际工程问题；支持导出 RRDB pretrained 模型（BSRNet 等）
+- **部署层**：单文件 HTML 前端，ONNX Runtime Web 推理，支持 WASM 和 WebGPU 后端，零服务器依赖；模型选择覆盖轻量 SR（ESPCN/FSRCNN）和 Blind SR（BSRNet）
 
 ---
 
@@ -89,7 +89,7 @@ PyTorch 训练 → ONNX 导出 → 模型文件 (.onnx)
 
 ## 关键数据
 
-- 模型规模：ESPCN 约 25KB (ONNX)，EDSR 约 5.8MB
+- 模型规模：ESPCN 约 25KB (ONNX)，EDSR 约 5.8MB，BSRNet 约 64MB (ONNX)
 - 训练数据：DIV2K（800 张 2K 分辨率图像）
 - 最佳 PSNR (x4)：EDSR 28.56 dB，SRCNN 27.67 dB，ESPCN 27.48 dB
 - LIIF 支持任意倍率（x1~x6+），单模型覆盖所有尺度

@@ -722,8 +722,9 @@ footer a:hover { color: var(--accent); }
   <!-- ── HERO ── -->
   <section class="hero fade-in fade-in-delay-1">
     <h1>Enhance your images with <em>neural precision</em></h1>
-    <p>Upload any image and watch our lightweight ESPCN / FSRCNN models upscale it
-       in real-time — entirely in your browser. No uploads, no servers, pure AI.</p>
+    <p>Upload any image and watch our SR models upscale it in real-time —
+       entirely in your browser. Lightweight ESPCN/FSRCNN or powerful BSRNet blind SR.
+       No uploads, no servers, pure AI.</p>
   </section>
 
   <!-- ── CONTROLS ── -->
@@ -731,8 +732,13 @@ footer a:hover { color: var(--accent); }
     <div class="control-group">
       <label for="model-select">Model</label>
       <select id="model-select" class="control-select">
-        <option value="espcn">ESPCN</option>
-        <option value="fsrcnn">FSRCNN</option>
+        <optgroup label="Lightweight SR">
+          <option value="espcn">ESPCN</option>
+          <option value="fsrcnn">FSRCNN</option>
+        </optgroup>
+        <optgroup label="Blind SR (RRDB)">
+          <option value="bsrnet">BSRNet</option>
+        </optgroup>
       </select>
     </div>
 
@@ -769,7 +775,7 @@ footer a:hover { color: var(--accent); }
     </div>
     <div class="upload-text">
       <p class="primary">Drop an image here, or <strong>click to browse</strong></p>
-      <p class="secondary">PNG / JPG / WebP / BMP &mdash; recommended &le; 512 &times; 512</p>
+      <p class="secondary">PNG / JPG / WebP / BMP &mdash; recommended &le; 512&times;512 (RRDB: &le; 256&times;256)</p>
     </div>
   </div>
 
@@ -895,8 +901,33 @@ const $backendBadge  = document.getElementById('backend-badge');
 /* ═══════════════════════════════════════════
    HELPERS
    ═══════════════════════════════════════════ */
+// RRDB 模型固定 x4，不可选 scale
+const RRDB_MODELS = new Set(['bsrnet', 'bsrgan', 'realesrgan_x4plus', 'realesrnet_x4plus', 'esrgan']);
+
 function getModel()  { return document.getElementById('model-select').value; }
-function getScale()  { return parseInt(document.querySelector('input[name="scale"]:checked').value); }
+function isRRDB()    { return RRDB_MODELS.has(getModel()); }
+function getScale()  {
+  if (isRRDB()) return 4;  // RRDB 模型固定 x4
+  return parseInt(document.querySelector('input[name="scale"]:checked').value);
+}
+
+// 当选择 RRDB 模型时，锁定 scale 为 x4
+document.getElementById('model-select').addEventListener('change', () => {
+  const scaleOptions = document.querySelectorAll('.scale-option input');
+  if (isRRDB()) {
+    scaleOptions.forEach(inp => {
+      inp.disabled = true;
+      if (inp.value === '4') inp.checked = true;
+    });
+    document.querySelector('.scale-options').style.opacity = '0.4';
+  } else {
+    scaleOptions.forEach(inp => inp.disabled = false);
+    document.querySelector('.scale-options').style.opacity = '1';
+  }
+  // 清除缓存的 session（模型变了）
+  state.session = null;
+  state.sessionKey = null;
+});
 
 function showToast(msg, isError = false) {
   $toast.textContent = msg;
@@ -1140,7 +1171,8 @@ async function runSR() {
 
     // Estimate model size
     try {
-      const resp = await fetch(`models/${modelName}_x${scale}.onnx`, { method: 'HEAD' });
+      const onnxKey = `${modelName}_x${scale}`;
+      const resp = await fetch(`models/${onnxKey}.onnx`, { method: 'HEAD' });
       const bytes = parseInt(resp.headers.get('content-length') || '0');
       document.getElementById('stat-size').textContent = bytes > 0
         ? `${(bytes / 1024).toFixed(1)} KB`

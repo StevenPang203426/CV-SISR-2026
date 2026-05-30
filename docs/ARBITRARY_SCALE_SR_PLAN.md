@@ -752,25 +752,30 @@ LIIF 原文在 DIV2K 训练、Set5 测试的 PSNR（EDSR-baseline Encoder）：
 
 ## 九、实施进度
 
-> 最后更新：2026-05-29
+> 最后更新：2026-05-30
 
 | # | 任务 | 状态 | 备注 |
 |---|------|------|------|
-| 1 | EDSREncoder 类 | 已完成 | `models/edsr.py` 中新增独立类 |
-| 2 | LIIF 解码器 | 已完成 | `models/liif.py`，5 层 256 维 MLP |
-| 3 | LIIFModel 组合 | 已完成 | `models/liif_model.py` + `build_liif_model()` |
-| 4 | LIIF Dataset | 已完成 | `data/dataset_liif.py`，固定 LR 尺寸训练策略 |
-| 5 | 训练入口 | 已完成 | `scripts/train_liif.py`，独立脚本 |
+| 1 | EDSREncoder 类 | 已完成 | `src/liif/encoder.py` 独立副本 |
+| 2 | LIIF 解码器 | 已完成 | `src/liif/liif.py`，5 层 256 维 MLP |
+| 3 | LIIFModel 组合 | 已完成 | `src/liif/liif_model.py` + `build_liif_model()` |
+| 4 | LIIF Dataset | 已完成 | `src/liif/dataset.py`，固定 LR 尺寸训练策略 |
+| 5 | 训练入口 | 已完成 | `src/liif/train.py`（`python -m src.liif.train`） |
 | 6 | 训练配置 | 已完成 | `configs/liif_edsr_x1-4.yaml` |
-| 7 | 测试入口 | 已完成 | `scripts/test_liif.py`，支持 `--scales` 多倍率 |
-| 8 | 可视化脚本 | 已完成 | `scripts/visualize_liif.py`，多倍率对比面板 |
+| 7 | 测试入口 | 已完成 | `src/liif/test.py`，支持 `--scales` 多倍率 |
+| 8 | 可视化脚本 | 已完成 | `src/liif/visualize.py`，多倍率对比面板 |
 | 9 | 云端训练 | 待执行 | 需在 GPU 服务器上运行 |
+| 10 | 三域重组 src/ | 已完成 | fixed_sr / liif / blind_sr / common 四包分离 |
+| 11 | .sh 默认参数模板 | 已完成 | scripts/*.sh 14 个脚本，带参数注释 |
+| 12 | BSRNet ONNX 导出 | 已完成 | `export_onnx.py` 支持 `--model bsrnet`，Web 前端已加入选项 |
 
 ### 关键修复记录
 
 - **DataLoader collate 错误**：随机倍率导致不同样本 LR 尺寸不同，无法 stack。修复：LR 固定为 `patch_size`，HR 计算为 `round(patch_size × scale)`。
-- **PyTorch 2.6 weights_only 错误**：默认改为 `True`，checkpoint 含 numpy 类型时报错。修复：`torch.load(..., weights_only=False)`，影响 `test_liif.py`、`core/checkpoint.py`、`models/rrdbnet.py`。
-- **脚本路径迁移**：`train_liif.py` 和 `test_liif.py` 从项目根目录移至 `scripts/`，添加 ROOT sys.path 处理。
+- **PyTorch 2.6 weights_only 错误**：默认改为 `True`，checkpoint 含 numpy 类型时报错。修复：`torch.load(..., weights_only=False)`。
+- **脚本路径迁移**：所有入口脚本迁移至 `src/` 包结构，移除 ROOT sys.path hack。
+- **FSRCNN PixelShuffle 导出**：`export_onnx.py` 自动检测 checkpoint 是 deconv 还是 pixelshuffle 格式，按需转换或直接加载。
+- **RRDB ONNX 导出**：扩展 `export_onnx.py` 支持 BSRNet 等 pretrained RRDB 模型导出（~64MB），Web 前端新增 Blind SR 模型选项。
 
 ---
 

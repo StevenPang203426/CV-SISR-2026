@@ -24,6 +24,7 @@ import torch
 from src.fixed_sr.models import build_model
 from src.fixed_sr.models.fsrcnn import FSRCNN
 from src.common.checkpoint import load_checkpoint
+from src.blind_sr.rrdbnet import RRDBNet
 
 
 def _load_fsrcnn_pixelshuffle(model, ckpt_path, scale):
@@ -141,14 +142,78 @@ def export_one(model_name: str, scale: int, ckpt_path: str, output_path: str,
     return output_path
 
 
+# ============================================================
+# RRDB 导出（BSRNet / BSRGAN / RealESRGAN 等）
+# ============================================================
+
+# pretrained 模型注册表
+RRDB_MODELS = {
+    'bsrnet':            {'path': 'pretrained/BSRNet.pth',            'scale': 4},
+    'bsrgan':            {'path': 'pretrained/BSRGAN.pth',            'scale': 4},
+    'realesrgan_x4plus': {'path': 'pretrained/RealESRGAN_x4plus.pth', 'scale': 4},
+    'realesrnet_x4plus': {'path': 'pretrained/RealESRNet_x4plus.pth', 'scale': 4},
+    'esrgan':            {'path': 'pretrained/ESRGAN.pth',            'scale': 4},
+}
+
+
+def export_rrdb(model_name: str, output_path: str,
+                opset: int = 18, input_h: int = 64, input_w: int = 64):
+    """导出 RRDB 预训练模型为 ONNX。"""
+    info = RRDB_MODELS[model_name]
+    ckpt_path = info['path']
+    scale = info['scale']
+
+    if not os.path.exists(ckpt_path):
+        print(f'[SKIP] {ckpt_path} not found')
+        return None
+
+    # 构建并加载权重
+    model = RRDBNet(in_nc=3, out_nc=3, nf=64, nb=23, gc=32, scale=scale)
+    model.load_pretrained(ckpt_path)
+    model.eval()
+    print(f'[INFO] Loaded RRDB model: {model_name} from {ckpt_path}')
+
+    # dummy 输入
+    dummy = torch.randn(1, 3, input_h, input_w)
+
+    # 导出
+    os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
+
+    export_kwargs = dict(
+        opset_version=opset,
+        input_names=['input'],
+        output_names=['output'],
+        dynamic_axes={
+            'input':  {2: 'height', 3: 'width'},
+            'output': {2: 'height', 3: 'width'},
+        },
+    )
+
+    torch_version = tuple(int(x) for x in torch.__version__.split('+')[0].split('.')[:2])
+    if torch_version >= (2, 6):
+        export_kwargs['dynamo'] = False
+
+    torch.onnx.export(model, dummy, output_path, **export_kwargs)
+
+    size_mb = os.path.getsize(output_path) / (1024 * 1024)
+    print(f'[OK] Exported: {output_path}  ({size_mb:.1f} MB)')
+    return output_path
+
+
+# ============================================================
+# 批量导出
+# ============================================================
+
 # 轻量模型列表（适合浏览器）
 WEB_MODELS = ['espcn', 'fsrcnn']
 SCALES = [2, 3, 4]
 
 
 def export_all(opset: int):
-    """批量导出所有可用的轻量模型。"""
+    """批量导出所有可用模型（轻量 + RRDB pretrained）。"""
     exported, skipped = [], []
+
+    # 轻量模型
     for model_name in WEB_MODELS:
         for scale in SCALES:
             ckpt = f'experiments/{model_name}_x{scale}/best.pt'
@@ -159,25 +224,46 @@ def export_all(opset: int):
             else:
                 print(f'[SKIP] {ckpt} not found')
                 skipped.append(ckpt)
+
+    # RRDB pretrained 模型
+    for name, info in RRDB_MODELS.items():
+        if os.path.exists(info['path']):
+            out = f'web/models/{name}_x{info["scale"]}.onnx'
+            result = export_rrdb(name, out, opset)
+            if result:
+                exported.append(out)
+            else:
+                skipped.append(info['path'])
+        else:
+            print(f'[SKIP] {info["path"]} not found')
+            skipped.append(info['path'])
+
     print(f'\nDone. Exported {len(exported)}, skipped {len(skipped)}.')
 
 
 def main():
     p = argparse.ArgumentParser(description='Export PyTorch SR models to ONNX')
-    p.add_argument('--model', type=str, help='Model name (espcn / fsrcnn)')
-    p.add_argument('--scale', type=int, help='Super-resolution scale factor')
-    p.add_argument('--ckpt', type=str, help='Checkpoint path (.pt)')
+    p.add_argument('--model', type=str,
+                   help='Model name: espcn/fsrcnn (轻量) 或 bsrnet/bsrgan/realesrgan_x4plus/realesrnet_x4plus/esrgan (RRDB)')
+    p.add_argument('--scale', type=int, help='Super-resolution scale factor (轻量模型需要)')
+    p.add_argument('--ckpt', type=str, help='Checkpoint path (轻量模型需要)')
     p.add_argument('--output', type=str, help='Output .onnx path')
     p.add_argument('--opset', type=int, default=18, help='ONNX opset version (default: 18)')
-    p.add_argument('--all', action='store_true', help='Export all available lightweight models')
+    p.add_argument('--all', action='store_true', help='Export all available models (轻量 + RRDB)')
     args = p.parse_args()
 
     if args.all:
         export_all(args.opset)
+    elif args.model and args.model in RRDB_MODELS:
+        # RRDB pretrained 模型：不需要 --scale/--ckpt
+        info = RRDB_MODELS[args.model]
+        output = args.output or f'web/models/{args.model}_x{info["scale"]}.onnx'
+        export_rrdb(args.model, output, args.opset)
     else:
-        if not all([args.model, args.scale, args.ckpt, args.output]):
-            p.error('--model, --scale, --ckpt, --output are required when not using --all')
-        export_one(args.model, args.scale, args.ckpt, args.output, args.opset)
+        if not all([args.model, args.scale, args.ckpt]):
+            p.error('轻量模型需要 --model, --scale, --ckpt (--output 可选)')
+        output = args.output or f'web/models/{args.model}_x{args.scale}.onnx'
+        export_one(args.model, args.scale, args.ckpt, output, args.opset)
 
 
 if __name__ == '__main__':
