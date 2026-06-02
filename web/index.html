@@ -875,7 +875,8 @@ const state = {
   busy: false,
 };
 
-const MAX_PIXELS = 512 * 512;
+const MAX_PIXELS_LIGHT = 512 * 512;   // 轻量模型 (ESPCN/FSRCNN)
+const MAX_PIXELS_RRDB  = 128 * 128;   // RRDB 模型 (~64MB, 显存压力大)
 
 /* ═══════════════════════════════════════════
    DOM REFS
@@ -1058,11 +1059,13 @@ async function getSession(modelName, scale) {
   // Configure WASM backend paths
   ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/';
 
-  // Detect WebGPU
+  // Detect WebGPU — RRDB 模型太大，强制 WASM
   let providers = ['wasm'];
-  if (typeof navigator !== 'undefined' && navigator.gpu) {
+  if (!RRDB_MODELS.has(modelName) && typeof navigator !== 'undefined' && navigator.gpu) {
     providers = ['webgpu', 'wasm'];
     $backendBadge.innerHTML = '<span class="dot"></span>WebGPU';
+  } else {
+    $backendBadge.innerHTML = '<span class="dot"></span>WASM';
   }
 
   const modelPath = `models/${key}.onnx`;
@@ -1097,13 +1100,14 @@ async function runSR() {
     let w = img.naturalWidth;
     let h = img.naturalHeight;
     let resized = false;
+    const maxPx = isRRDB() ? MAX_PIXELS_RRDB : MAX_PIXELS_LIGHT;
 
-    if (w * h > MAX_PIXELS) {
-      const ratio = Math.sqrt(MAX_PIXELS / (w * h));
+    if (w * h > maxPx) {
+      const ratio = Math.sqrt(maxPx / (w * h));
       w = Math.floor(w * ratio);
       h = Math.floor(h * ratio);
       resized = true;
-      showToast(`Image auto-resized to ${w}×${h} (max ${Math.round(Math.sqrt(MAX_PIXELS))}²)`);
+      showToast(`Image auto-resized to ${w}×${h} (max ${Math.round(Math.sqrt(maxPx))}²)`);
     }
 
     // 2. Draw to canvas to get ImageData
